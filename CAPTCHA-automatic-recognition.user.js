@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI验证码自动识别填充
 // @namespace    https://github.com/anghunk/UserScript
-// @version      1.3.3
+// @version      1.3.6
 // @author       Alex
 // @description  自动识别网页上的验证码并填充到输入框中，点击识别图标触发识别。
 // @license      Apache-2.0
@@ -25,7 +25,7 @@
   'use strict';
 
   const name = "CAPTCHA-automatic-recognition";
-  const version = "1.3.3";
+  const version = "1.3.6";
   const author = "Alex";
   const description = "Automatically recognize the CAPTCHA on the webpage and fill it into the input box, click the recognition icon to trigger recognition.";
   const type = "module";
@@ -5350,7 +5350,7 @@
                 vue.createElementVNode("div", _hoisted_110, [
                   vue.withDirectives(vue.createElementVNode("textarea", {
                     "onUpdate:modelValue": _cache[30] || (_cache[30] = ($event) => $data.settings.disabledDomains = $event),
-                    placeholder: "每行一个域名，支持正则和通配符，例如：\r\nexample.com\r\n*.example.org\r\nexample.*.com\r\n/^(www\\.)?example\\.com$/",
+                    placeholder: "每行一个域名，支持正则和通配符，例如：\nexample.com\n*.example.org\nexample.*.com\n/^(www\\.)?example\\.com$/",
                     rows: "6",
                     class: "domain-textarea"
                   }, null, 512), [
