@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI验证码自动识别填充
 // @namespace    https://github.com/anghunk/UserScript
-// @version      1.3.6
+// @version      1.4.0
 // @author       Alex
 // @description  自动识别网页上的验证码并填充到输入框中，点击识别图标触发识别。
 // @license      Apache-2.0
@@ -25,7 +25,7 @@
   'use strict';
 
   const name = "CAPTCHA-automatic-recognition";
-  const version = "1.3.6";
+  const version = "1.4.0";
   const author = "Alex";
   const description = "Automatically recognize the CAPTCHA on the webpage and fill it into the input box, click the recognition icon to trigger recognition.";
   const type = "module";
@@ -2554,6 +2554,395 @@
 然后，忽略所有背景中的浅色图案和干扰线。
 
 最后，将识别出的字符组合起来告诉我。`;
+  function isSameOrigin(url) {
+    try {
+      const currentOrigin = window.location.origin;
+      const urlObj = new URL(url, currentOrigin);
+      return urlObj.origin === currentOrigin;
+    } catch (e) {
+      return false;
+    }
+  }
+  function imageToBase64(element) {
+    try {
+      if (element.tagName === "CANVAS") {
+        try {
+          const base64Data2 = element.toDataURL("image/png").split(",")[1];
+          if (!base64Data2 || base64Data2.length < 100) {
+            console.error("生成的canvas base64数据无效或过短");
+            return { success: false, message: "Canvas数据转换失败或内容为空。请刷新验证码后重试。" };
+          }
+          return { success: true, data: base64Data2 };
+        } catch (e) {
+          console.error("从Canvas获取数据失败:", e);
+          return { success: false, message: "无法从Canvas获取数据，可能是跨域限制。" + (e.message || "") };
+        }
+      }
+      const imgSrc = element.src;
+      if (!element.complete || !element.naturalWidth) {
+        return { success: false, message: "图片尚未加载完成，请稍后重试" };
+      }
+      if (!imgSrc.startsWith("data:image") && !isSameOrigin(imgSrc)) {
+        if (element.crossOrigin !== "anonymous") {
+          element.crossOrigin = "anonymous";
+          const timestamp = (/* @__PURE__ */ new Date()).getTime();
+          const separator = imgSrc.includes("?") ? "&" : "?";
+          element.src = `${imgSrc}${separator}_t=${timestamp}`;
+          return { success: false, message: "正在处理跨域图片，请稍后重试" };
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = element.naturalWidth || element.width;
+      canvas.height = element.naturalHeight || element.height;
+      const ctx = canvas.getContext("2d");
+      try {
+        ctx.drawImage(element, 0, 0);
+        ctx.getImageData(0, 0, 1, 1);
+      } catch (e) {
+        console.error("绘制图片到Canvas失败:", e);
+        return { success: false, message: "无法读取图片数据，可能是跨域限制。请尝试手动下载验证码图片后识别。" };
+      }
+      const base64Data = canvas.toDataURL("image/png").split(",")[1];
+      if (!base64Data || base64Data.length < 100) {
+        console.error("生成的base64数据无效或过短");
+        return { success: false, message: "图片转换失败或内容为空。请刷新验证码后重试。" };
+      }
+      return { success: true, data: base64Data };
+    } catch (error) {
+      console.error("图片转base64失败:", error);
+      return { success: false, message: "图片转换失败: " + (error.message || "未知错误") };
+    }
+  }
+  function preprocessAndConvertImage(imgElement) {
+    try {
+      if (!imgElement.complete || !imgElement.naturalWidth) {
+        return imageToBase64(imgElement);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = imgElement.naturalWidth || imgElement.width;
+      canvas.height = imgElement.naturalHeight || imgElement.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(imgElement, 0, 0);
+      try {
+        ctx.getImageData(0, 0, 1, 1);
+      } catch {
+        return imageToBase64(imgElement);
+      }
+      const optimized = optimizeCanvasImage(canvas);
+      if (optimized.success) {
+        return optimized;
+      }
+    } catch {
+    }
+    return imageToBase64(imgElement);
+  }
+  function getProcessingStrategy(colors, brightRatio) {
+    if (colors.g > colors.r && colors.g > colors.b && colors.g > 80) {
+      return "green_background";
+    } else if (colors.b > colors.r && colors.b > colors.g && colors.b > 80) {
+      return "blue_background";
+    } else if (colors.r > colors.g && colors.r > colors.b && colors.r > 80) {
+      return "red_background";
+    } else if (brightRatio > 0.7) {
+      return "light_background";
+    } else if (brightRatio < 0.3) {
+      return "dark_background";
+    } else {
+      return "standard";
+    }
+  }
+  function analyzeImageCharacteristics(canvas) {
+    const ctx = canvas.getContext("2d");
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    let totalPixels = 0;
+    let brightPixels = 0;
+    let dominantColors = { r: 0, g: 0, b: 0 };
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+      if (brightness > 128) brightPixels++;
+      totalPixels++;
+      dominantColors.r += r;
+      dominantColors.g += g;
+      dominantColors.b += b;
+    }
+    const pixelCount = totalPixels / 4;
+    dominantColors.r /= pixelCount;
+    dominantColors.g /= pixelCount;
+    dominantColors.b /= pixelCount;
+    const brightRatio = brightPixels / totalPixels;
+    return {
+      hasColoredBackground: dominantColors.r > 100 || dominantColors.g > 100 || dominantColors.b > 100,
+      isLightBackground: brightRatio > 0.6,
+      isDarkBackground: brightRatio < 0.4,
+      isGreenish: dominantColors.g > dominantColors.r && dominantColors.g > dominantColors.b,
+      isBlueish: dominantColors.b > dominantColors.r && dominantColors.b > dominantColors.g,
+      isReddish: dominantColors.r > dominantColors.g && dominantColors.r > dominantColors.b,
+      recommendedStrategy: getProcessingStrategy(dominantColors, brightRatio)
+    };
+  }
+  function removeImageNoise(ctx, width, height) {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    const newData = new Uint8ClampedArray(data);
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        for (let c = 0; c < 3; c++) {
+          const neighbors = [];
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const idx = ((y + dy) * width + (x + dx)) * 4 + c;
+              neighbors.push(data[idx]);
+            }
+          }
+          neighbors.sort((a, b) => a - b);
+          const currentIdx = (y * width + x) * 4 + c;
+          newData[currentIdx] = neighbors[4];
+        }
+      }
+    }
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = newData[i];
+      data[i + 1] = newData[i + 1];
+      data[i + 2] = newData[i + 2];
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+  function morphologyErode(binaryData, width, height) {
+    const result = new Array(width * height).fill(1);
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const centerIdx = y * width + x;
+        let allForeground = true;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (binaryData[(y + dy) * width + (x + dx)] !== 0) {
+              allForeground = false;
+              break;
+            }
+          }
+          if (!allForeground) break;
+        }
+        result[centerIdx] = allForeground ? 0 : 1;
+      }
+    }
+    return result;
+  }
+  function morphologyDilate(binaryData, width, height) {
+    const result = new Array(width * height).fill(1);
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const centerIdx = y * width + x;
+        let hasForeground = false;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (binaryData[(y + dy) * width + (x + dx)] === 0) {
+              hasForeground = true;
+              break;
+            }
+          }
+          if (hasForeground) break;
+        }
+        result[centerIdx] = hasForeground ? 0 : 1;
+      }
+    }
+    return result;
+  }
+  function applyMorphologyOperations(ctx, width, height) {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    const binaryData = new Array(width * height);
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      binaryData[i / 4] = gray < 128 ? 0 : 1;
+    }
+    const eroded = morphologyErode(binaryData, width, height);
+    const dilated = morphologyDilate(eroded, width, height);
+    for (let i = 0; i < binaryData.length; i++) {
+      const pixelValue = dilated[i] === 0 ? 0 : 255;
+      const dataIndex = i * 4;
+      data[dataIndex] = pixelValue;
+      data[dataIndex + 1] = pixelValue;
+      data[dataIndex + 2] = pixelValue;
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+  function assessImageQuality(canvas) {
+    const ctx = canvas.getContext("2d");
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    let clarity = 0;
+    let contrastSum = 0;
+    let edgeCount = 0;
+    for (let y = 1; y < canvas.height - 1; y++) {
+      for (let x = 1; x < canvas.width - 1; x++) {
+        const currentIdx = (y * canvas.width + x) * 4;
+        const current = data[currentIdx] * 0.299 + data[currentIdx + 1] * 0.587 + data[currentIdx + 2] * 0.114;
+        const rightIdx = (y * canvas.width + (x + 1)) * 4;
+        const bottomIdx = ((y + 1) * canvas.width + x) * 4;
+        const right = data[rightIdx] * 0.299 + data[rightIdx + 1] * 0.587 + data[rightIdx + 2] * 0.114;
+        const bottom = data[bottomIdx] * 0.299 + data[bottomIdx + 1] * 0.587 + data[bottomIdx + 2] * 0.114;
+        const gradientX = Math.abs(current - right);
+        const gradientY = Math.abs(current - bottom);
+        const gradient = Math.sqrt(gradientX * gradientX + gradientY * gradientY);
+        clarity += gradient;
+        if (gradient > 30) edgeCount++;
+        contrastSum += Math.abs(current - 128);
+      }
+    }
+    const totalPixels = (canvas.width - 2) * (canvas.height - 2);
+    const clarityScore = Math.min(100, clarity / totalPixels / 2);
+    const contrastScore = Math.min(100, contrastSum / totalPixels / 1.28);
+    const edgeScore = Math.min(100, edgeCount / totalPixels * 500);
+    return Math.round((clarityScore + contrastScore + edgeScore) / 3);
+  }
+  function intelligentImageUpscale(sourceCanvas, qualityScore) {
+    try {
+      const minDimension = Math.min(sourceCanvas.width, sourceCanvas.height);
+      let scaleFactor;
+      if (minDimension < 30) {
+        scaleFactor = qualityScore < 50 ? 4 : 3;
+      } else if (minDimension < 40) {
+        scaleFactor = qualityScore < 60 ? 3 : 2;
+      } else {
+        scaleFactor = 2;
+      }
+      const newWidth = sourceCanvas.width * scaleFactor;
+      const newHeight = sourceCanvas.height * scaleFactor;
+      const scaledCanvas = document.createElement("canvas");
+      scaledCanvas.width = newWidth;
+      scaledCanvas.height = newHeight;
+      const scaledCtx = scaledCanvas.getContext("2d");
+      scaledCtx.imageSmoothingEnabled = false;
+      scaledCtx.webkitImageSmoothingEnabled = false;
+      scaledCtx.mozImageSmoothingEnabled = false;
+      scaledCtx.msImageSmoothingEnabled = false;
+      scaledCtx.drawImage(sourceCanvas, 0, 0, newWidth, newHeight);
+      return scaledCanvas;
+    } catch (error) {
+      console.error("图像放大失败:", error);
+      return null;
+    }
+  }
+  function optimizeCanvasImage(canvasElement) {
+    try {
+      const ctx = canvasElement.getContext("2d");
+      if (!ctx) {
+        return { success: false, message: "无法获取 Canvas 上下文" };
+      }
+      const imageData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
+      const data = imageData.data;
+      const optimizedCanvas = document.createElement("canvas");
+      optimizedCanvas.width = canvasElement.width;
+      optimizedCanvas.height = canvasElement.height;
+      const optimizedCtx = optimizedCanvas.getContext("2d");
+      const imageAnalysis = analyzeImageCharacteristics(canvasElement);
+      const strategy = imageAnalysis.recommendedStrategy;
+      const qualityScore = assessImageQuality(canvasElement);
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+        let newR, newG, newB;
+        switch (strategy) {
+          case "green_background":
+            if (g > r && g > b && g > 80) {
+              newR = Math.max(0, r - 120);
+              newG = Math.max(0, g - 150);
+              newB = Math.max(0, b - 120);
+            } else {
+              newR = Math.min(255, r + 100);
+              newG = Math.min(255, g + 100);
+              newB = Math.min(255, b + 100);
+            }
+            break;
+          case "blue_background":
+            if (b > r && b > g && b > 80) {
+              newR = Math.max(0, r - 120);
+              newG = Math.max(0, g - 120);
+              newB = Math.max(0, b - 150);
+            } else {
+              newR = Math.min(255, r + 100);
+              newG = Math.min(255, g + 100);
+              newB = Math.min(255, b + 100);
+            }
+            break;
+          case "red_background":
+            if (r > g && r > b && r > 80) {
+              newR = Math.max(0, r - 150);
+              newG = Math.max(0, g - 120);
+              newB = Math.max(0, b - 120);
+            } else {
+              newR = Math.min(255, r + 100);
+              newG = Math.min(255, g + 100);
+              newB = Math.min(255, b + 100);
+            }
+            break;
+          case "light_background": {
+            const contrast = 3, threshold = 140;
+            newR = (r - threshold) * contrast + threshold;
+            newG = (g - threshold) * contrast + threshold;
+            newB = (b - threshold) * contrast + threshold;
+            break;
+          }
+          case "dark_background": {
+            const contrast = 2, threshold = 80;
+            newR = (r - threshold) * contrast + threshold;
+            newG = (g - threshold) * contrast + threshold;
+            newB = (b - threshold) * contrast + threshold;
+            break;
+          }
+          default: {
+            const contrast = 2.5, threshold = 128;
+            newR = (r - threshold) * contrast + threshold;
+            newG = (g - threshold) * contrast + threshold;
+            newB = (b - threshold) * contrast + threshold;
+            if (brightness > 50 && brightness < 200) {
+              newR = Math.min(255, newR * 1.3);
+              newG = Math.min(255, newG * 1.3);
+              newB = Math.min(255, newB * 1.3);
+            }
+          }
+        }
+        const finalBrightness = 0.299 * newR + 0.587 * newG + 0.114 * newB;
+        const binaryThreshold = strategy.includes("background") ? 120 : 140;
+        if (finalBrightness > binaryThreshold) {
+          newR = newG = newB = 255;
+        } else if (finalBrightness < binaryThreshold - 40) {
+          newR = newG = newB = 0;
+        }
+        data[i] = Math.max(0, Math.min(255, newR));
+        data[i + 1] = Math.max(0, Math.min(255, newG));
+        data[i + 2] = Math.max(0, Math.min(255, newB));
+      }
+      optimizedCtx.putImageData(imageData, 0, 0);
+      removeImageNoise(optimizedCtx, optimizedCanvas.width, optimizedCanvas.height);
+      if (strategy !== "standard" && qualityScore < 70) {
+        applyMorphologyOperations(optimizedCtx, optimizedCanvas.width, optimizedCanvas.height);
+      }
+      if (optimizedCanvas.width < 120 || optimizedCanvas.height < 40) {
+        const scaledCanvas = intelligentImageUpscale(optimizedCanvas, qualityScore);
+        if (scaledCanvas) {
+          optimizedCanvas.width = scaledCanvas.width;
+          optimizedCanvas.height = scaledCanvas.height;
+          optimizedCtx.clearRect(0, 0, optimizedCanvas.width, optimizedCanvas.height);
+          optimizedCtx.drawImage(scaledCanvas, 0, 0);
+        }
+      }
+      const base64Data = optimizedCanvas.toDataURL("image/png").split(",")[1];
+      if (!base64Data || base64Data.length < 100) {
+        return { success: false, message: "优化Canvas数据失败或内容为空" };
+      }
+      return { success: true, data: base64Data };
+    } catch (error) {
+      console.error("优化Canvas图像失败:", error);
+      return { success: false, message: "优化Canvas图像失败: " + (error.message || "未知错误") };
+    }
+  }
   const _export_sfc = (sfc, props) => {
     const target = sfc.__vccOpts || sfc;
     for (const [key, val] of props) {
@@ -2650,13 +3039,14 @@
           // 验证码图片选择器
           captchaSelectors: [
             'img[src*="captcha"]',
-            'img[src*="verify"]',
+            'img[src*="verifycode"]',
+            'img[src*="verify_code"]',
+            'img[src*="checkcode"]',
             'img[alt*="验证码"]',
             'img[title*="验证码"]',
             'img[alt*="captcha"]',
             'img[id="captchaPic"]',
             ".validate-code img",
-            'img[style="z-index: 2; position: absolute; bottom: -11px; left: 206px; width: 88px; height: 40px;"]',
             '.authcode img[id="authImage"]',
             'img[class="verification-img"]',
             'img[name="imgCaptcha"]'
@@ -2685,6 +3075,19 @@
        * @param {string} apiType - API 类型
        * @returns {string} - 名称
        */
+      storageGet(key) {
+        if (typeof GM_getValue !== "undefined") {
+          return GM_getValue(key);
+        }
+        return localStorage.getItem(key);
+      },
+      storageSet(key, value) {
+        if (typeof GM_setValue !== "undefined") {
+          GM_setValue(key, value);
+        } else {
+          localStorage.setItem(key, value);
+        }
+      },
       getApiTypeName(apiType) {
         switch (apiType) {
           case "openai":
@@ -2698,34 +3101,40 @@
         }
       },
       /**
+       * 智能清洗 AI 识别结果
+       * 对数学表达式尝试计算后返回结果，普通字符串去除无关字符
+       */
+      cleanRecognitionResult(rawText) {
+        if (!rawText) return "";
+        const trimmed = rawText.trim();
+        const mathMatch = trimmed.match(/^(\d+)\s*([+\-*/×÷])\s*(\d+)\s*[=＝]?\s*(\d+)?[?？]?$/);
+        if (mathMatch) {
+          const [, a, op, b, explicitAnswer] = mathMatch;
+          if (explicitAnswer) return explicitAnswer;
+          const opMap = { "+": "+", "-": "-", "*": "*", "/": "/", "×": "*", "÷": "/" };
+          try {
+            const result = new Function("return " + Number(a) + opMap[op] + Number(b))();
+            return String(Math.round(result));
+          } catch {
+          }
+        }
+        return trimmed.replace(/[^a-zA-Z0-9]/g, "");
+      },
+      /**
        * 加载用户设置
        */
       loadSettings() {
         try {
-          if (typeof GM_getValue !== "undefined") {
-            const savedSettings = GM_getValue("captchaSettings");
-            if (savedSettings) {
-              const parsedSettings = JSON.parse(savedSettings);
-              this.settings = { ...this.settings, ...parsedSettings };
-            }
-            const savedRules = GM_getValue("captchaRules");
-            if (savedRules) {
-              this.rules = JSON.parse(savedRules);
-            } else {
-              this.loadRules();
-            }
+          const savedSettings = this.storageGet("captchaSettings");
+          if (savedSettings) {
+            const parsedSettings = JSON.parse(savedSettings);
+            this.settings = { ...this.settings, ...parsedSettings };
+          }
+          const savedRules = this.storageGet("captchaRules");
+          if (savedRules) {
+            this.rules = JSON.parse(savedRules);
           } else {
-            const localSettings = localStorage.getItem("captchaSettings");
-            if (localSettings) {
-              const parsedSettings = JSON.parse(localSettings);
-              this.settings = { ...this.settings, ...parsedSettings };
-            }
-            const localRules = localStorage.getItem("captchaRules");
-            if (localRules) {
-              this.rules = JSON.parse(localRules);
-            } else {
-              this.loadRules();
-            }
+            this.loadRules();
           }
         } catch (error) {
           console.error("加载设置失败：", error);
@@ -2746,11 +3155,7 @@
           });
           if (response && response.data) {
             rulesData = response.data;
-            if (typeof GM_setValue !== "undefined") {
-              GM_setValue("captchaRules", JSON.stringify(rulesData));
-            } else {
-              localStorage.setItem("captchaRules", JSON.stringify(rulesData));
-            }
+            this.storageSet("captchaRules", JSON.stringify(rulesData));
             this.rules = rulesData;
             this.rulesLoadStatus = "success";
             this.showToast("规则加载成功！", "success");
@@ -2789,11 +3194,7 @@
        */
       saveSettings() {
         try {
-          if (typeof GM_setValue !== "undefined") {
-            GM_setValue("captchaSettings", JSON.stringify(this.settings));
-          } else {
-            localStorage.setItem("captchaSettings", JSON.stringify(this.settings));
-          }
+          this.storageSet("captchaSettings", JSON.stringify(this.settings));
           this.closeSettings();
           this.showToast("设置已保存！", "success");
         } catch (error) {
@@ -2862,102 +3263,6 @@
         }
       },
       /**
-       * 将图片或 canvas 转换为 base64 格式
-       * @param {HTMLImageElement|HTMLCanvasElement} element - 图片或 canvas 元素
-       * @returns {Object} - 返回包含成功状态和数据的对象
-       */
-      imageToBase64(element) {
-        try {
-          if (element.tagName === "CANVAS") {
-            try {
-              const base64Data2 = element.toDataURL("image/png").split(",")[1];
-              if (!base64Data2 || base64Data2.length < 100) {
-                console.error("生成的canvas base64数据无效或过短");
-                return {
-                  success: false,
-                  message: "Canvas数据转换失败或内容为空。请刷新验证码后重试。"
-                };
-              }
-              return {
-                success: true,
-                data: base64Data2
-              };
-            } catch (e) {
-              console.error("从Canvas获取数据失败:", e);
-              return {
-                success: false,
-                message: "无法从Canvas获取数据，可能是跨域限制。" + (e.message || "")
-              };
-            }
-          }
-          const imgSrc = element.src;
-          if (!element.complete || !element.naturalWidth) {
-            return {
-              success: false,
-              message: "图片尚未加载完成，请稍后重试"
-            };
-          }
-          if (!imgSrc.startsWith("data:image") && !this.isSameOrigin(imgSrc)) {
-            if (element.crossOrigin !== "anonymous") {
-              element.crossOrigin = "anonymous";
-              const timestamp = (/* @__PURE__ */ new Date()).getTime();
-              const separator = imgSrc.includes("?") ? "&" : "?";
-              element.src = `${imgSrc}${separator}_t=${timestamp}`;
-              return {
-                success: false,
-                message: "正在处理跨域图片，请稍后重试"
-              };
-            }
-          }
-          const canvas = document.createElement("canvas");
-          canvas.width = element.naturalWidth || element.width;
-          canvas.height = element.naturalHeight || element.height;
-          const ctx = canvas.getContext("2d");
-          try {
-            ctx.drawImage(element, 0, 0);
-            ctx.getImageData(0, 0, 1, 1);
-          } catch (e) {
-            console.error("绘制图片到Canvas失败:", e);
-            return {
-              success: false,
-              message: "无法读取图片数据，可能是跨域限制。请尝试手动下载验证码图片后识别。"
-            };
-          }
-          const base64Data = canvas.toDataURL("image/png").split(",")[1];
-          if (!base64Data || base64Data.length < 100) {
-            console.error("生成的base64数据无效或过短");
-            return {
-              success: false,
-              message: "图片转换失败或内容为空。请刷新验证码后重试。"
-            };
-          }
-          return {
-            success: true,
-            data: base64Data
-          };
-        } catch (error) {
-          console.error("图片转base64失败:", error);
-          return {
-            success: false,
-            message: "图片转换失败: " + (error.message || "未知错误")
-          };
-        }
-      },
-      /**
-       * 检查URL是否与当前页面同源
-       * @param {string} url - 要检查的URL
-       * @returns {boolean} - 是否同源
-       */
-      isSameOrigin(url) {
-        try {
-          const currentOrigin = window.location.origin;
-          const urlObj = new URL(url, currentOrigin);
-          return urlObj.origin === currentOrigin;
-        } catch (e) {
-          return false;
-        }
-      },
-      /**
        * 格式化OpenAI API URL，如果只提供了前缀，自动补全'/v1/chat/completions'
        * @param {string} url - 原始URL
        * @returns {string} - 格式化后的URL
@@ -2973,13 +3278,29 @@
         return url;
       },
       /**
+       * 获取指定 API 类型的提示词
+       */
+      getPromptForApi(apiType) {
+        const basePrompt = this.settings.promptType === "simple" ? SIMPLE_PROMPT : DEFAULT_PROMPT;
+        const customPromptKey = `${apiType}Prompt`;
+        return this.settings[customPromptKey] || basePrompt;
+      },
+      /**
+       * 处理 AI 识别的原始结果：清洗 -> 规则纠错 -> 日志
+       */
+      processRecognitionResult(rawText, prompt, apiName) {
+        const basicCleaned = this.cleanRecognitionResult(rawText);
+        const finalResult = this.applyCaptchaRules(basicCleaned, window.location.hostname);
+        this.estimateTokens(prompt);
+        return finalResult || basicCleaned;
+      },
+      /**
        * 使用OpenAI API识别验证码
        */
       async recognizeWithOpenAI(base64Image) {
         const apiUrl = this.formatOpenAIUrl(this.settings.openaiApiUrl);
         const model = this.settings.openaiModel || "gpt-4.1-mini";
-        const basePrompt = this.settings.promptType === "simple" ? SIMPLE_PROMPT : DEFAULT_PROMPT;
-        const prompt = this.settings.openaiPrompt || basePrompt;
+        const prompt = this.getPromptForApi("openai");
         const response = await this.request({
           method: "POST",
           url: apiUrl,
@@ -3010,12 +3331,7 @@
           }
         });
         const rawContent = response.data.choices[0].message.content.trim();
-        const basicCleaned = rawContent.replace(/[^a-zA-Z0-9\-]/g, "");
-        const finalResult = this.applyCaptchaRules(basicCleaned, window.location.hostname);
-        const promptTokens = this.estimateTokens(prompt);
-        console.log(`OpenAI识别结果优化: ${rawContent} -> ${basicCleaned} -> ${finalResult}`);
-        console.log(`📊 提示词Token消耗估算: ~${promptTokens} tokens (${this.settings.promptType === "simple" ? "简洁版" : "详细版"})`);
-        return finalResult || basicCleaned;
+        return this.processRecognitionResult(rawContent, prompt, "OpenAI");
       },
       /**
        * 使用Google Gemini API识别验证码
@@ -3024,8 +3340,7 @@
         const model = this.settings.geminiModel || "gemini-2.5-flash-lite-preview-06-17";
         const baseApiUrl = this.settings.geminiApiUrl || "https://generativelanguage.googleapis.com/v1beta/models";
         const apiUrl = `${baseApiUrl}/${model}:generateContent`;
-        const basePrompt = this.settings.promptType === "simple" ? SIMPLE_PROMPT : DEFAULT_PROMPT;
-        const prompt = this.settings.geminiPrompt || basePrompt;
+        const prompt = this.getPromptForApi("gemini");
         const response = await this.request({
           method: "POST",
           url: `${apiUrl}?key=${this.settings.geminiKey}`,
@@ -3057,12 +3372,7 @@
           const candidate = response.data.candidates[0];
           if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
             const rawText = candidate.content.parts[0].text || "";
-            const basicCleaned = rawText.replace(/[^a-zA-Z0-9\-]/g, "");
-            const finalResult = this.applyCaptchaRules(basicCleaned, window.location.hostname);
-            const promptTokens = this.estimateTokens(prompt);
-            console.log(`Gemini识别结果优化: ${rawText} -> ${basicCleaned} -> ${finalResult}`);
-            console.log(`📊 提示词Token消耗估算: ~${promptTokens} tokens (${this.settings.promptType === "simple" ? "简洁版" : "详细版"})`);
-            return finalResult || basicCleaned;
+            return this.processRecognitionResult(rawText, prompt, "Gemini");
           }
         }
         return "";
@@ -3073,8 +3383,7 @@
       async recognizeWithQwen(base64Image) {
         const apiUrl = this.settings.qwenApiUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
         const model = this.settings.qwenModel || "qwen-vl-max-2025-04-02";
-        const basePrompt = this.settings.promptType === "simple" ? SIMPLE_PROMPT : DEFAULT_PROMPT;
-        const prompt = this.settings.qwenPrompt || basePrompt;
+        const prompt = this.getPromptForApi("qwen");
         const response = await this.request({
           method: "POST",
           url: apiUrl,
@@ -3103,12 +3412,7 @@
         });
         if (response.data && response.data.choices && response.data.choices.length > 0) {
           const rawText = response.data.choices[0].message.content;
-          const basicCleaned = rawText.replace(/[^a-zA-Z0-9\-]/g, "");
-          const finalResult = this.applyCaptchaRules(basicCleaned, window.location.hostname);
-          const promptTokens = this.estimateTokens(prompt);
-          console.log(`Qwen识别结果优化: ${rawText} -> ${basicCleaned} -> ${finalResult}`);
-          console.log(`📊 提示词Token消耗估算: ~${promptTokens} tokens (${this.settings.promptType === "simple" ? "简洁版" : "详细版"})`);
-          return finalResult || basicCleaned;
+          return this.processRecognitionResult(rawText, prompt, "Qwen");
         }
         return "";
       },
@@ -3200,10 +3504,7 @@
               try {
                 const captchaImgs = document.querySelectorAll(selector);
                 captchaImgs.forEach((captchaElement) => {
-                  if (captchaElement.tagName !== "IMG" && captchaElement.tagName !== "CANVAS") {
-                    return;
-                  }
-                  if (captchaElement.tagName === "IMG" && !captchaElement.src) {
+                  if (!this.isValidCaptchaElement(captchaElement)) {
                     return;
                   }
                   if (captchaElement.nextElementSibling && captchaElement.nextElementSibling.classList.contains(
@@ -3234,7 +3535,7 @@
                 elements.forEach(({ captchaImg, inputField }) => {
                   let icon = captchaImg.nextElementSibling;
                   if (icon && icon.classList.contains("captcha-recognition-icon")) {
-                    const base64Result = this.imageToBase64(captchaImg);
+                    const base64Result = imageToBase64(captchaImg);
                     if (base64Result.success) {
                       this.processCaptcha(captchaImg, inputField, icon, base64Result);
                     }
@@ -3310,12 +3611,12 @@
             base64Result = checkedBase64;
           } else {
             if (captchaImg.tagName === "CANVAS") {
-              base64Result = this.optimizeCanvasImage(captchaImg);
+              base64Result = optimizeCanvasImage(captchaImg);
               if (!base64Result.success) {
-                base64Result = this.imageToBase64(captchaImg);
+                base64Result = imageToBase64(captchaImg);
               }
             } else {
-              base64Result = this.imageToBase64(captchaImg);
+              base64Result = preprocessAndConvertImage(captchaImg);
             }
             if (!base64Result.success) {
               console.error("验证码转换失败：", base64Result.message);
@@ -3449,7 +3750,7 @@
                 );
                 const unrecognizableImages = [];
                 newElements.forEach(({ captchaImg }) => {
-                  const base64Result = this.imageToBase64(captchaImg);
+                  const base64Result = imageToBase64(captchaImg);
                   if (!base64Result.success) {
                     unrecognizableImages.push({
                       img: captchaImg,
@@ -3464,7 +3765,7 @@
                   );
                 }
                 const recognizableElements = newElements.filter(({ captchaImg }) => {
-                  const base64Result = this.imageToBase64(captchaImg);
+                  const base64Result = imageToBase64(captchaImg);
                   return base64Result.success;
                 });
                 if (recognizableElements.length > 0) {
@@ -3482,7 +3783,7 @@
                         captchaImg.parentNode.appendChild(icon);
                       }
                     }
-                    const base64Result = this.imageToBase64(captchaImg);
+                    const base64Result = imageToBase64(captchaImg);
                     this.processCaptcha(captchaImg, inputField, icon, base64Result);
                   });
                 } else if (newElements.length > 0) {
@@ -3532,7 +3833,7 @@
             if (elements.length > 0) {
               const unrecognizableImages = [];
               elements.forEach(({ captchaImg }) => {
-                const base64Result = this.imageToBase64(captchaImg);
+                const base64Result = imageToBase64(captchaImg);
                 if (!base64Result.success) {
                   unrecognizableImages.push({
                     img: captchaImg,
@@ -3551,7 +3852,7 @@
               }
               if (this.settings.autoRecognize) {
                 const recognizableElements = elements.filter(({ captchaImg }) => {
-                  const base64Result = this.imageToBase64(captchaImg);
+                  const base64Result = imageToBase64(captchaImg);
                   return base64Result.success;
                 });
                 if (recognizableElements.length > 0) {
@@ -3573,7 +3874,7 @@
                         captchaImg.parentNode.appendChild(icon);
                       }
                     }
-                    const base64Result = this.imageToBase64(captchaImg);
+                    const base64Result = imageToBase64(captchaImg);
                     this.processCaptcha(captchaImg, inputField, icon, base64Result);
                   });
                 } else if (elements.length > 0) {
@@ -3700,26 +4001,25 @@
        */
       applyCaptchaRules(rawResult, domain = "") {
         if (!rawResult) return rawResult;
-        let result = rawResult.toUpperCase();
         const siteRules = this.getSiteSpecificRules(domain);
+        let result = siteRules.caseSensitive === false ? rawResult.toUpperCase() : rawResult;
         if (result.length < 3) {
           return null;
         }
         if (siteRules.allowedChars) {
-          result = result.split("").filter(
-            (char) => siteRules.allowedChars.includes(char)
-          ).join("");
+          const allowed = siteRules.caseSensitive === false ? siteRules.allowedChars.toUpperCase() : siteRules.allowedChars;
+          result = result.split("").filter((char) => allowed.includes(char)).join("");
         }
         if (siteRules.preferNumbers) {
-          result = result.replace(/[OIL]/g, (match) => {
-            return { "O": "0", "I": "1", "L": "1" }[match] || match;
+          result = result.replace(/[OILoil]/g, (match) => {
+            return { "O": "0", "o": "0", "I": "1", "i": "1", "L": "1", "l": "1" }[match] || match;
           });
         } else if (siteRules.preferLetters) {
           result = result.replace(/[015]/g, (match) => {
             return { "0": "O", "1": "I", "5": "S" }[match] || match;
           });
         }
-        if (result.length !== siteRules.expectedLength && siteRules.expectedLength) {
+        if (siteRules.expectedLength && result.length !== siteRules.expectedLength) {
           console.warn(`验证码长度异常: 期望${siteRules.expectedLength}位，实际${result.length}位`);
         }
         return result;
@@ -3766,248 +4066,6 @@
           }
         }
         return rules.default;
-      },
-      /**
-       * 高级图像分析和自适应处理
-       * @param {HTMLCanvasElement} canvas - 验证码图像
-       * @returns {Object} - 分析结果和处理策略
-       */
-      analyzeImageCharacteristics(canvas) {
-        const ctx = canvas.getContext("2d");
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        let totalPixels = 0;
-        let brightPixels = 0;
-        let dominantColors = { r: 0, g: 0, b: 0 };
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (brightness > 128) brightPixels++;
-          totalPixels++;
-          dominantColors.r += r;
-          dominantColors.g += g;
-          dominantColors.b += b;
-        }
-        const pixelCount = totalPixels / 4;
-        dominantColors.r /= pixelCount;
-        dominantColors.g /= pixelCount;
-        dominantColors.b /= pixelCount;
-        const brightRatio = brightPixels / totalPixels;
-        const characteristics = {
-          // 背景颜色分析
-          hasColoredBackground: dominantColors.r > 100 || dominantColors.g > 100 || dominantColors.b > 100,
-          isLightBackground: brightRatio > 0.6,
-          isDarkBackground: brightRatio < 0.4,
-          // 颜色特征
-          isGreenish: dominantColors.g > dominantColors.r && dominantColors.g > dominantColors.b,
-          isBlueish: dominantColors.b > dominantColors.r && dominantColors.b > dominantColors.g,
-          isReddish: dominantColors.r > dominantColors.g && dominantColors.r > dominantColors.b,
-          // 推荐处理策略
-          recommendedStrategy: this.getProcessingStrategy(dominantColors, brightRatio)
-        };
-        return characteristics;
-      },
-      /**
-       * 噪声去除算法 - 中值滤波
-       * @param {CanvasRenderingContext2D} ctx - Canvas上下文
-       * @param {number} width - 图像宽度
-       * @param {number} height - 图像高度
-       */
-      removeImageNoise(ctx, width, height) {
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-        const newData = new Uint8ClampedArray(data);
-        for (let y = 1; y < height - 1; y++) {
-          for (let x = 1; x < width - 1; x++) {
-            for (let c = 0; c < 3; c++) {
-              const neighbors = [];
-              for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                  const idx = ((y + dy) * width + (x + dx)) * 4 + c;
-                  neighbors.push(data[idx]);
-                }
-              }
-              neighbors.sort((a, b) => a - b);
-              const median = neighbors[4];
-              const currentIdx = (y * width + x) * 4 + c;
-              newData[currentIdx] = median;
-            }
-          }
-        }
-        for (let i = 0; i < data.length; i += 4) {
-          data[i] = newData[i];
-          data[i + 1] = newData[i + 1];
-          data[i + 2] = newData[i + 2];
-        }
-        ctx.putImageData(imageData, 0, 0);
-      },
-      /**
-       * 形态学操作 - 开运算和闭运算
-       * @param {CanvasRenderingContext2D} ctx - Canvas上下文
-       * @param {number} width - 图像宽度
-       * @param {number} height - 图像高度
-       */
-      applyMorphologyOperations(ctx, width, height) {
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-        const binaryData = new Array(width * height);
-        for (let i = 0; i < data.length; i += 4) {
-          const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-          binaryData[i / 4] = gray < 128 ? 0 : 1;
-        }
-        const eroded = this.morphologyErode(binaryData, width, height);
-        const dilated = this.morphologyDilate(eroded, width, height);
-        for (let i = 0; i < binaryData.length; i++) {
-          const pixelValue = dilated[i] === 0 ? 0 : 255;
-          const dataIndex = i * 4;
-          data[dataIndex] = pixelValue;
-          data[dataIndex + 1] = pixelValue;
-          data[dataIndex + 2] = pixelValue;
-        }
-        ctx.putImageData(imageData, 0, 0);
-      },
-      /**
-       * 形态学腐蚀运算
-       */
-      morphologyErode(binaryData, width, height) {
-        const result = new Array(width * height).fill(1);
-        for (let y = 1; y < height - 1; y++) {
-          for (let x = 1; x < width - 1; x++) {
-            const centerIdx = y * width + x;
-            let allForeground = true;
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                const idx = (y + dy) * width + (x + dx);
-                if (binaryData[idx] !== 0) {
-                  allForeground = false;
-                  break;
-                }
-              }
-              if (!allForeground) break;
-            }
-            result[centerIdx] = allForeground ? 0 : 1;
-          }
-        }
-        return result;
-      },
-      /**
-       * 形态学膨胀运算
-       */
-      morphologyDilate(binaryData, width, height) {
-        const result = new Array(width * height).fill(1);
-        for (let y = 1; y < height - 1; y++) {
-          for (let x = 1; x < width - 1; x++) {
-            const centerIdx = y * width + x;
-            let hasForeground = false;
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                const idx = (y + dy) * width + (x + dx);
-                if (binaryData[idx] === 0) {
-                  hasForeground = true;
-                  break;
-                }
-              }
-              if (hasForeground) break;
-            }
-            result[centerIdx] = hasForeground ? 0 : 1;
-          }
-        }
-        return result;
-      },
-      /**
-       * 评估图像质量
-       * @param {HTMLCanvasElement} canvas - 验证码图像
-       * @returns {number} - 质量评分 (0-100)
-       */
-      assessImageQuality(canvas) {
-        const ctx = canvas.getContext("2d");
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        let clarity = 0;
-        let contrastSum = 0;
-        let edgeCount = 0;
-        for (let y = 1; y < canvas.height - 1; y++) {
-          for (let x = 1; x < canvas.width - 1; x++) {
-            const currentIdx = (y * canvas.width + x) * 4;
-            const current = data[currentIdx] * 0.299 + data[currentIdx + 1] * 0.587 + data[currentIdx + 2] * 0.114;
-            const rightIdx = (y * canvas.width + (x + 1)) * 4;
-            const bottomIdx = ((y + 1) * canvas.width + x) * 4;
-            const right = data[rightIdx] * 0.299 + data[rightIdx + 1] * 0.587 + data[rightIdx + 2] * 0.114;
-            const bottom = data[bottomIdx] * 0.299 + data[bottomIdx + 1] * 0.587 + data[bottomIdx + 2] * 0.114;
-            const gradientX = Math.abs(current - right);
-            const gradientY = Math.abs(current - bottom);
-            const gradient = Math.sqrt(gradientX * gradientX + gradientY * gradientY);
-            clarity += gradient;
-            if (gradient > 30) {
-              edgeCount++;
-            }
-            contrastSum += Math.abs(current - 128);
-          }
-        }
-        const totalPixels = (canvas.width - 2) * (canvas.height - 2);
-        const avgClarity = clarity / totalPixels;
-        const avgContrast = contrastSum / totalPixels;
-        const edgeRatio = edgeCount / totalPixels;
-        const clarityScore = Math.min(100, avgClarity / 2);
-        const contrastScore = Math.min(100, avgContrast / 1.28);
-        const edgeScore = Math.min(100, edgeRatio * 500);
-        const qualityScore = (clarityScore + contrastScore + edgeScore) / 3;
-        return Math.round(qualityScore);
-      },
-      /**
-       * 智能图像放大 - 针对小尺寸验证码
-       * @param {HTMLCanvasElement} sourceCanvas - 源画布
-       * @param {number} qualityScore - 图像质量评分
-       * @returns {HTMLCanvasElement|null} - 放大后的画布
-       */
-      intelligentImageUpscale(sourceCanvas, qualityScore) {
-        try {
-          const minDimension = Math.min(sourceCanvas.width, sourceCanvas.height);
-          let scaleFactor;
-          if (minDimension < 30) {
-            scaleFactor = qualityScore < 50 ? 4 : 3;
-          } else if (minDimension < 40) {
-            scaleFactor = qualityScore < 60 ? 3 : 2;
-          } else {
-            scaleFactor = 2;
-          }
-          const newWidth = sourceCanvas.width * scaleFactor;
-          const newHeight = sourceCanvas.height * scaleFactor;
-          const scaledCanvas = document.createElement("canvas");
-          scaledCanvas.width = newWidth;
-          scaledCanvas.height = newHeight;
-          const scaledCtx = scaledCanvas.getContext("2d");
-          scaledCtx.imageSmoothingEnabled = false;
-          scaledCtx.webkitImageSmoothingEnabled = false;
-          scaledCtx.mozImageSmoothingEnabled = false;
-          scaledCtx.msImageSmoothingEnabled = false;
-          scaledCtx.drawImage(sourceCanvas, 0, 0, newWidth, newHeight);
-          console.log(`图像智能放大: ${sourceCanvas.width}x${sourceCanvas.height} -> ${newWidth}x${newHeight} (${scaleFactor}x)`);
-          return scaledCanvas;
-        } catch (error) {
-          console.error("图像放大失败:", error);
-          return null;
-        }
-      },
-      /**
-       * 根据图像特征选择处理策略
-       */
-      getProcessingStrategy(colors, brightRatio) {
-        if (colors.g > colors.r && colors.g > colors.b && colors.g > 80) {
-          return "green_background";
-        } else if (colors.b > colors.r && colors.b > colors.g && colors.b > 80) {
-          return "blue_background";
-        } else if (colors.r > colors.g && colors.r > colors.b && colors.r > 80) {
-          return "red_background";
-        } else if (brightRatio > 0.7) {
-          return "light_background";
-        } else if (brightRatio < 0.3) {
-          return "dark_background";
-        } else {
-          return "standard";
-        }
       },
       /**
        * 估算Token消耗量 (粗略估算)
@@ -4108,132 +4166,69 @@
         return knownModels;
       },
       /**
+       * 构建 API 测试请求配置
+       */
+      buildTestRequestConfig(apiType, testBase64Image) {
+        const testPrompt = "这是一个验证码图片，请识别其中的字符";
+        if (apiType === "openai") {
+          return {
+            method: "POST",
+            url: this.formatOpenAIUrl(this.settings.openaiApiUrl),
+            data: {
+              model: this.settings.openaiModel || "gpt-4.1-mini",
+              messages: [{ role: "user", content: [{ type: "text", text: testPrompt }, { type: "image_url", image_url: { url: `data:image/png;base64,${testBase64Image}` } }] }]
+            },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.settings.openaiKey}` }
+          };
+        } else if (apiType === "gemini") {
+          const model = this.settings.geminiModel || "gemini-2.5-flash-lite-preview-06-17";
+          const baseApiUrl = this.settings.geminiApiUrl || "https://generativelanguage.googleapis.com/v1beta/models";
+          return {
+            method: "POST",
+            url: `${baseApiUrl}/${model}:generateContent?key=${this.settings.geminiKey}`,
+            data: { contents: [{ parts: [{ text: testPrompt }, { inline_data: { mime_type: "image/png", data: testBase64Image } }] }] },
+            headers: { "Content-Type": "application/json" }
+          };
+        } else if (apiType === "qwen") {
+          return {
+            method: "POST",
+            url: this.settings.qwenApiUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+            data: {
+              model: this.settings.qwenModel || "qwen-vl-max-2025-04-02",
+              messages: [{ role: "user", content: [{ type: "text", text: testPrompt }, { type: "image_url", image_url: { url: `data:image/png;base64,${testBase64Image}` } }] }]
+            },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.settings.qwenKey}` }
+          };
+        }
+        return null;
+      },
+      /**
        * 测试 API 连通性
-       * @param {string} apiType - API 类型，'openai'或'gemini'
        */
       async testApiConnection(apiType) {
+        const resetStatus = () => setTimeout(() => {
+          this.apiTestStatus[apiType] = "";
+        }, 3e3);
         try {
           if (!this.isApiConfigured(apiType)) {
             this.apiTestStatus[apiType] = "error";
-            setTimeout(() => {
-              this.apiTestStatus[apiType] = "";
-            }, 3e3);
+            resetStatus();
             return;
           }
           this.apiTestStatus[apiType] = "loading";
           const testBase64Image = "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";
-          if (apiType === "openai") {
-            const apiUrl = this.formatOpenAIUrl(this.settings.openaiApiUrl);
-            const model = this.settings.openaiModel || "gpt-4.1-mini";
-            const response = await this.request({
-              method: "POST",
-              url: apiUrl,
-              data: {
-                model,
-                messages: [
-                  {
-                    role: "user",
-                    content: [
-                      {
-                        type: "text",
-                        text: "这是一个验证码图片，请识别其中的字符"
-                      },
-                      {
-                        type: "image_url",
-                        image_url: {
-                          url: `data:image/png;base64,${testBase64Image}`
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${this.settings.openaiKey}`
-              }
-            });
-            if (response && response.data) {
-              this.apiTestStatus[apiType] = "success";
-              this.fetchAvailableModels(apiType);
-            }
-          } else if (apiType === "gemini") {
-            const model = this.settings.geminiModel || "gemini-2.5-flash-lite-preview-06-17";
-            const baseApiUrl = this.settings.geminiApiUrl || "https://generativelanguage.googleapis.com/v1beta/models";
-            const apiUrl = `${baseApiUrl}/${model}:generateContent`;
-            const response = await this.request({
-              method: "POST",
-              url: `${apiUrl}?key=${this.settings.geminiKey}`,
-              data: {
-                contents: [
-                  {
-                    parts: [
-                      {
-                        text: "这是一个验证码图片，请识别其中的字符"
-                      },
-                      {
-                        inline_data: {
-                          mime_type: "image/png",
-                          data: testBase64Image
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              headers: {
-                "Content-Type": "application/json"
-              }
-            });
-            if (response && response.data) {
-              this.apiTestStatus[apiType] = "success";
-              this.fetchAvailableModels(apiType);
-            }
-          } else if (apiType === "qwen") {
-            const apiUrl = this.settings.qwenApiUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
-            const model = this.settings.qwenModel || "qwen-vl-max-2025-04-02";
-            const response = await this.request({
-              method: "POST",
-              url: apiUrl,
-              data: {
-                model,
-                messages: [
-                  {
-                    role: "user",
-                    content: [
-                      {
-                        type: "text",
-                        text: "这是一个验证码图片，请识别其中的字符"
-                      },
-                      {
-                        type: "image_url",
-                        image_url: {
-                          url: `data:image/png;base64,${testBase64Image}`
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${this.settings.qwenKey}`
-              }
-            });
-            if (response && response.data) {
-              this.apiTestStatus[apiType] = "success";
-              this.fetchAvailableModels(apiType);
-            }
+          const requestConfig = this.buildTestRequestConfig(apiType, testBase64Image);
+          if (!requestConfig) return;
+          const response = await this.request(requestConfig);
+          if (response && response.data) {
+            this.apiTestStatus[apiType] = "success";
+            this.fetchAvailableModels(apiType);
           }
-          setTimeout(() => {
-            this.apiTestStatus[apiType] = "";
-          }, 3e3);
+          resetStatus();
         } catch (error) {
           console.error("API 连接测试失败：", error);
           this.apiTestStatus[apiType] = "error";
-          setTimeout(() => {
-            this.apiTestStatus[apiType] = "";
-          }, 3e3);
+          resetStatus();
         }
       },
       /**
@@ -4356,6 +4351,62 @@
         });
       },
       /**
+       * 校验元素是否可能是验证码（尺寸、可见性、宽高比、上下文）
+       * @param {HTMLElement} element
+       * @returns {boolean}
+       */
+      isValidCaptchaElement(element) {
+        if (element.tagName !== "IMG" && element.tagName !== "CANVAS") {
+          return false;
+        }
+        if (element.tagName === "IMG" && !element.src) {
+          return false;
+        }
+        const rect = element.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+          return false;
+        }
+        const style = getComputedStyle(element);
+        if (style.display === "none" || style.visibility === "hidden") {
+          return false;
+        }
+        if (rect.width < 40 || rect.width > 400 || rect.height < 15 || rect.height > 150) {
+          return false;
+        }
+        return this.getCaptchaConfidence(element) >= 2;
+      },
+      /**
+       * 评估元素是验证码的置信度得分
+       * @param {HTMLElement} element
+       * @returns {number} 得分越高越可能是验证码
+       */
+      getCaptchaConfidence(element) {
+        let score = 0;
+        const rect = element.getBoundingClientRect();
+        const ratio = rect.width / rect.height;
+        if (ratio >= 1.5 && ratio <= 6) score += 2;
+        if (rect.width >= 60 && rect.width <= 250 && rect.height >= 20 && rect.height <= 80) {
+          score += 2;
+        }
+        if (element.closest("form")) score += 2;
+        const parent = element.parentElement;
+        if (parent && parent.querySelector('input:not([type="hidden"])')) {
+          score += 2;
+        }
+        const attrs = [
+          element.src || "",
+          element.alt || "",
+          element.title || "",
+          element.id || "",
+          element.className || "",
+          element.name || ""
+        ].join(" ").toLowerCase();
+        if (/captcha|verify|验证码|authcode|checkcode|vcode/.test(attrs)) {
+          score += 3;
+        }
+        return score;
+      },
+      /**
        * 查找页面上的验证码图片和相关输入框
        * @returns {Array} - 包含验证码图片和相关输入框的对象数组
        */
@@ -4415,16 +4466,10 @@
           try {
             const captchaImgs = document.querySelectorAll(selector);
             captchaImgs.forEach((captchaElement) => {
-              if (captchaElement.tagName !== "IMG" && captchaElement.tagName !== "CANVAS") {
-                return;
-              }
-              if (captchaElement.tagName === "IMG" && !captchaElement.src) {
+              if (!this.isValidCaptchaElement(captchaElement)) {
                 return;
               }
               let inputField = this.findInputFieldForCaptcha(captchaElement, inputSelectors);
-              if (inputField) {
-              } else {
-              }
               elements.push({
                 captchaImg: captchaElement,
                 inputField
@@ -4552,14 +4597,6 @@
                 break;
               }
             }
-            if (!inputField) {
-              for (const input of inputs) {
-                if (input.type !== "hidden") {
-                  inputField = input;
-                  break;
-                }
-              }
-            }
           }
         }
         return inputField;
@@ -4573,171 +4610,20 @@
             return;
           }
           const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-          let lastConfigUpdate;
-          if (typeof GM_getValue !== "undefined") {
-            lastConfigUpdate = GM_getValue("lastConfigUpdate");
-          } else {
-            lastConfigUpdate = localStorage.getItem("lastConfigUpdate");
-          }
+          const lastConfigUpdate = this.storageGet("lastConfigUpdate");
           if (!lastConfigUpdate || lastConfigUpdate !== today) {
             this.showToast("正在获取最新云端配置...", "info");
             await this.loadRules();
-            if (typeof GM_setValue !== "undefined") {
-              GM_setValue("lastConfigUpdate", today);
-            } else {
-              localStorage.setItem("lastConfigUpdate", today);
-            }
+            this.storageSet("lastConfigUpdate", today);
             this.showToast("云端配置更新完成", "success");
           }
         } catch (error) {
           console.error("自动获取云端配置失败：", error);
         }
-      },
-      /**
-       * 优化 Canvas 验证码图像
-       * @param {HTMLCanvasElement} canvasElement - canvas 元素
-       * @returns {Object} - 返回包含成功状态和数据的对象
-       */
-      optimizeCanvasImage(canvasElement) {
-        try {
-          const ctx = canvasElement.getContext("2d");
-          if (!ctx) {
-            return {
-              success: false,
-              message: "无法获取 Canvas 上下文"
-            };
-          }
-          const imageData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
-          const data = imageData.data;
-          const optimizedCanvas = document.createElement("canvas");
-          optimizedCanvas.width = canvasElement.width;
-          optimizedCanvas.height = canvasElement.height;
-          const optimizedCtx = optimizedCanvas.getContext("2d");
-          const imageAnalysis = this.analyzeImageCharacteristics(canvasElement);
-          const strategy = imageAnalysis.recommendedStrategy;
-          const qualityScore = this.assessImageQuality(canvasElement);
-          console.log(`图像分析结果: ${strategy}，质量评分: ${qualityScore}`, imageAnalysis);
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-            let newR, newG, newB;
-            switch (strategy) {
-              case "green_background":
-                if (g > r && g > b && g > 80) {
-                  newR = Math.max(0, r - 120);
-                  newG = Math.max(0, g - 150);
-                  newB = Math.max(0, b - 120);
-                } else {
-                  newR = Math.min(255, r + 100);
-                  newG = Math.min(255, g + 100);
-                  newB = Math.min(255, b + 100);
-                }
-                break;
-              case "blue_background":
-                if (b > r && b > g && b > 80) {
-                  newR = Math.max(0, r - 120);
-                  newG = Math.max(0, g - 120);
-                  newB = Math.max(0, b - 150);
-                } else {
-                  newR = Math.min(255, r + 100);
-                  newG = Math.min(255, g + 100);
-                  newB = Math.min(255, b + 100);
-                }
-                break;
-              case "red_background":
-                if (r > g && r > b && r > 80) {
-                  newR = Math.max(0, r - 150);
-                  newG = Math.max(0, g - 120);
-                  newB = Math.max(0, b - 120);
-                } else {
-                  newR = Math.min(255, r + 100);
-                  newG = Math.min(255, g + 100);
-                  newB = Math.min(255, b + 100);
-                }
-                break;
-              case "light_background":
-                const contrast = 3;
-                const threshold = 140;
-                newR = (r - threshold) * contrast + threshold;
-                newG = (g - threshold) * contrast + threshold;
-                newB = (b - threshold) * contrast + threshold;
-                break;
-              case "dark_background":
-                const darkContrast = 2;
-                const darkThreshold = 80;
-                newR = (r - darkThreshold) * darkContrast + darkThreshold;
-                newG = (g - darkThreshold) * darkContrast + darkThreshold;
-                newB = (b - darkThreshold) * darkContrast + darkThreshold;
-                break;
-              default:
-                const standardContrast = 2.5;
-                const standardThreshold = 128;
-                newR = (r - standardThreshold) * standardContrast + standardThreshold;
-                newG = (g - standardThreshold) * standardContrast + standardThreshold;
-                newB = (b - standardThreshold) * standardContrast + standardThreshold;
-                if (brightness > 50 && brightness < 200) {
-                  newR = Math.min(255, newR * 1.3);
-                  newG = Math.min(255, newG * 1.3);
-                  newB = Math.min(255, newB * 1.3);
-                }
-            }
-            const finalBrightness = 0.299 * newR + 0.587 * newG + 0.114 * newB;
-            const binaryThreshold = strategy.includes("background") ? 120 : 140;
-            if (finalBrightness > binaryThreshold) {
-              newR = newG = newB = 255;
-            } else if (finalBrightness < binaryThreshold - 40) {
-              newR = newG = newB = 0;
-            }
-            data[i] = Math.max(0, Math.min(255, newR));
-            data[i + 1] = Math.max(0, Math.min(255, newG));
-            data[i + 2] = Math.max(0, Math.min(255, newB));
-          }
-          optimizedCtx.putImageData(imageData, 0, 0);
-          this.removeImageNoise(optimizedCtx, optimizedCanvas.width, optimizedCanvas.height);
-          if (strategy !== "standard" && qualityScore < 70) {
-            this.applyMorphologyOperations(optimizedCtx, optimizedCanvas.width, optimizedCanvas.height);
-          }
-          if (optimizedCanvas.width < 120 || optimizedCanvas.height < 40) {
-            const scaledCanvas = this.intelligentImageUpscale(optimizedCanvas, qualityScore);
-            if (scaledCanvas) {
-              optimizedCanvas.width = scaledCanvas.width;
-              optimizedCanvas.height = scaledCanvas.height;
-              optimizedCtx.clearRect(0, 0, optimizedCanvas.width, optimizedCanvas.height);
-              optimizedCtx.drawImage(scaledCanvas, 0, 0);
-            }
-          }
-          const base64Data = optimizedCanvas.toDataURL("image/png").split(",")[1];
-          if (!base64Data || base64Data.length < 100) {
-            return {
-              success: false,
-              message: "优化Canvas数据失败或内容为空"
-            };
-          }
-          return {
-            success: true,
-            data: base64Data
-          };
-        } catch (error) {
-          console.error("优化Canvas图像失败:", error);
-          return {
-            success: false,
-            message: "优化Canvas图像失败: " + (error.message || "未知错误")
-          };
-        }
       }
     },
     mounted() {
       try {
-        this.loadSettings();
-        this.showSettings = false;
-        if (typeof GM_registerMenuCommand !== "undefined") {
-          GM_registerMenuCommand("验证码识别设置", () => {
-            this.openSettings();
-          });
-        } else {
-        }
         this.init();
       } catch (error) {
         console.error("验证码识别插件挂载失败：", error);
@@ -4745,44 +4631,40 @@
     },
     created() {
       try {
-        if (window.location.host == "nportal.ntut.edu.tw") {
-          const observer = new MutationObserver(function(mutations) {
-            const authcodeElement = document.querySelector(".authcode.co");
-            if (authcodeElement) {
-              const captchaIcon = document.querySelector(".captcha-recognition-icon");
-              if (captchaIcon) {
-                captchaIcon.parentNode.removeChild(captchaIcon);
-                authcodeElement.appendChild(captchaIcon);
-                observer.disconnect();
-              }
-            }
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
-        }
-        if (window.location.host == "www.luogu.com.cn") {
-          const styleluogu = document.createElement("style");
-          styleluogu.textContent = `
-          .l-form-layout .img .captcha-recognition-icon {
-            display: none !important;
+        const siteCompatRules = [
+          {
+            host: "nportal.ntut.edu.tw",
+            containerSelector: ".authcode.co",
+            placement: "appendChild"
+          },
+          {
+            host: "www.luogu.com.cn",
+            containerSelector: ".l-form-layout .img",
+            placement: "insertAfter",
+            injectCSS: `.l-form-layout .img .captcha-recognition-icon { display: none !important; }`
           }
-        `;
-          document.head.appendChild(styleluogu);
-          const observer = new MutationObserver(function(mutations) {
-            const authcodeElement = document.querySelector(".l-form-layout .img");
-            if (authcodeElement) {
-              const captchaIcon = document.querySelector(".captcha-recognition-icon");
-              if (captchaIcon) {
-                captchaIcon.parentNode.removeChild(captchaIcon);
-                authcodeElement.parentNode.insertBefore(
-                  captchaIcon,
-                  authcodeElement.nextSibling
-                );
-                observer.disconnect();
-              }
-            }
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
+        ];
+        const rule = siteCompatRules.find((r) => r.host === window.location.host);
+        if (!rule) return;
+        if (rule.injectCSS) {
+          const style = document.createElement("style");
+          style.textContent = rule.injectCSS;
+          document.head.appendChild(style);
         }
+        const observer = new MutationObserver(() => {
+          const container = document.querySelector(rule.containerSelector);
+          if (!container) return;
+          const icon = document.querySelector(".captcha-recognition-icon");
+          if (!icon) return;
+          icon.parentNode.removeChild(icon);
+          if (rule.placement === "appendChild") {
+            container.appendChild(icon);
+          } else if (rule.placement === "insertAfter") {
+            container.parentNode.insertBefore(icon, container.nextSibling);
+          }
+          observer.disconnect();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
       } catch (error) {
         console.error("验证码识别插件创建阶段出错：", error);
       }
