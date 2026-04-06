@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI验证码自动识别填充
 // @namespace    https://github.com/anghunk/UserScript
-// @version      1.4.0
+// @version      1.4.1
 // @author       Alex
 // @description  自动识别网页上的验证码并填充到输入框中，点击识别图标触发识别。
 // @license      Apache-2.0
@@ -25,7 +25,7 @@
   'use strict';
 
   const name = "CAPTCHA-automatic-recognition";
-  const version = "1.4.0";
+  const version = "1.4.1";
   const author = "Alex";
   const description = "Automatically recognize the CAPTCHA on the webpage and fill it into the input box, click the recognition icon to trigger recognition.";
   const type = "module";
