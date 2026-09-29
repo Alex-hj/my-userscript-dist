@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI验证码自动识别填充
 // @namespace    https://github.com/Alex-hj/my-userscript-dist
-// @version      1.5.1
+// @version      1.5.2
 // @author       Alex
 // @description  自动识别网页上的验证码并填充到输入框中，点击识别图标触发识别。
 // @license      Apache-2.0
@@ -43,6 +43,8 @@
     POLL_INTERVAL: 500,
     /** DOM 变化后等待图片加载完成再自动识别 */
     AUTO_RECOGNIZE_DELAY: 500,
+    /** 自动识别时图片仍未加载完成,继续等它加载结束的最长时间 */
+    IMAGE_READY_TIMEOUT: 5e3,
     /** 页面加载完成后延迟初始化,确保验证码图片已渲染 */
     INIT_DELAY: 1e3,
     /** 识别图标成功/失败状态的持续时间 */
@@ -159,6 +161,38 @@
       }
     }
   }
+  class RecognitionJobTracker {
+    constructor() {
+      this.running = /* @__PURE__ */ new WeakMap();
+    }
+    /**
+     * 开始识别元素当前的图片
+     * @returns {boolean} false 表示这张图片已经在识别中,调用方应放弃本次请求
+     */
+    begin(element, imageKey) {
+      if (this.running.get(element) === imageKey) {
+        return false;
+      }
+      this.running.set(element, imageKey);
+      return true;
+    }
+    /** 元素是否有正在进行的识别 */
+    isRunning(element) {
+      return this.running.has(element);
+    }
+    /**
+     * 结束一次识别
+     * @returns {boolean} true 表示这张图片仍是元素当前正在识别的图片,结果可以使用;
+     *   false 表示期间已有另一张图片接替,结果已过期
+     */
+    finish(element, imageKey) {
+      if (this.running.get(element) !== imageKey) {
+        return false;
+      }
+      this.running.delete(element);
+      return true;
+    }
+  }
   class CaptchaProcessor {
     /**
      * @param {object} deps
@@ -174,6 +208,7 @@
      */
     constructor(deps) {
       Object.assign(this, deps);
+      this.jobs = new RecognitionJobTracker();
     }
     /**
      * @param {HTMLElement} element - 验证码元素(img / canvas)
@@ -194,13 +229,22 @@
           this._reportConversionFailure(image.message, icon);
           return;
         }
-        const text = await this.recognizer.recognize(image.data);
+        const job = this._beginJob(element, image, converted);
+        if (!job) {
+          return;
+        }
+        const valueAtStart = inputField ? inputField.value : void 0;
+        const text = await this._recognizeCurrent(job);
+        if (text === null) {
+          this._releaseIcon(element, icon);
+          return;
+        }
         if (!text) {
           console.error("验证码识别结果为空");
           this.icons.showResult(icon, false);
           return;
         }
-        await this._deliver(text, element, inputField);
+        await this._deliver(text, element, inputField, valueAtStart);
         this.icons.showResult(icon, true);
       } catch (error) {
         console.error("验证码识别处理失败：", error);
@@ -223,13 +267,82 @@
       this.toast.show(message, "error");
       this.icons.showResult(icon, false);
     }
-    /** 把识别结果交付给用户:填入输入框,并按设置复制到剪贴板 */
-    async _deliver(text, element, inputField) {
+    /**
+     * 登记一次识别。
+     * @returns {{element: HTMLElement, key: string, data: string, shown: string|null}|null}
+     *   key 是图片标识,data 是送去识别的数据,shown 是开始时元素显示的图片;
+     *   null 表示这张图片已经在识别中
+     */
+    _beginJob(element, image, converted) {
+      const key = this._imageKey(element, image, converted);
+      if (!this.jobs.begin(element, key)) {
+        return null;
+      }
+      return { element, key, data: image.data, shown: this._shownKey(element) };
+    }
+    /**
+     * 图片标识:未经增强的原始转换数据,与送去识别的数据分开,
+     * 这样同一张图片无论自动识别(原图)还是手动点击(canvas 会先增强)都得到同一个标识。
+     */
+    _imageKey(element, image, converted) {
+      if (converted || element.tagName !== "CANVAS") {
+        return image.data;
+      }
+      const raw = this.converter.toBase64(element);
+      return raw.success ? raw.data : image.data;
+    }
+    /**
+     * 元素此刻显示的图片,用来发现识别期间图片被换掉。
+     * img 看地址(GIF 每帧的像素不同,不能比像素);canvas 没有地址,只能看像素。
+     */
+    _shownKey(element) {
+      if (element.tagName !== "CANVAS") {
+        return element.src;
+      }
+      const raw = this.converter.toBase64(element);
+      return raw.success ? raw.data : null;
+    }
+    /**
+     * 识别元素当前的图片。
+     * @returns {Promise<string|null>} null 表示这次的结果(或错误)已过期:
+     *   期间有另一次识别接替、元素已从页面移除,或元素显示的已不是发起识别时的那张图片
+     */
+    async _recognizeCurrent(job) {
+      try {
+        const text = await this.recognizer.recognize(job.data);
+        return this._isStillCurrent(job) ? text : null;
+      } catch (error) {
+        if (this._isStillCurrent(job)) {
+          throw error;
+        }
+        return null;
+      }
+    }
+    /** 先 finish 再判断其余条件,保证无论结果是否作废,这次识别的登记都会被清掉 */
+    _isStillCurrent(job) {
+      const { element } = job;
+      return this.jobs.finish(element, job.key) && element.isConnected && this._shownKey(element) === job.shown;
+    }
+    /** 结果作废时,若没有别的识别接替,把图标从加载状态放开;有接替的由它负责收尾 */
+    _releaseIcon(element, icon) {
+      if (!this.jobs.isRunning(element)) {
+        this.icons.clearLoading(icon);
+      }
+    }
+    /**
+     * 把识别结果交付给用户:填入输入框,并按设置复制到剪贴板。
+     * @param {string|undefined} valueAtStart - 开始识别时输入框的内容,用于发现识别期间被用户改动
+     */
+    async _deliver(text, element, inputField, valueAtStart) {
       const field = inputField || this.finder.findInputField(element);
       if (!field) {
         console.warn("仍未找到验证码输入框");
-        this.toast.show(`验证码已识别：${text}，但未找到输入框`, "warning");
-        await this._copyIfEnabled(text, `已将验证码复制到剪贴板：${text}`);
+        await this._showWithoutFilling(text, "但未找到输入框");
+        return;
+      }
+      if (valueAtStart !== void 0 && field.value !== valueAtStart) {
+        console.warn("识别期间输入框内容已被修改,不再覆盖");
+        await this._showWithoutFilling(text, "但输入框内容已被修改,未自动填入");
         return;
       }
       this._fill(field, text);
@@ -237,6 +350,11 @@
       if (!copied) {
         this.toast.show(`验证码已识别：${text}`, "success");
       }
+    }
+    /** 不填入输入框,只提示识别结果,并按设置复制到剪贴板 */
+    async _showWithoutFilling(text, reason) {
+      this.toast.show(`验证码已识别：${text}，${reason}`, "warning");
+      await this._copyIfEnabled(text, `已将验证码复制到剪贴板：${text}`);
     }
     /** 填入并触发 input/change 事件,保证前端表单联动 */
     _fill(field, text) {
@@ -325,8 +443,14 @@
     ["csdn.net", {}],
     ["cnblogs.com", {}]
   ];
+  function matchesSite(hostname, keyword) {
+    if (!keyword.includes(".")) {
+      return hostname.includes(keyword);
+    }
+    return hostname === keyword || hostname.endsWith(`.${keyword}`);
+  }
   function getSiteCaptchaRule(hostname) {
-    const hit = SITE_RULES.find(([keyword]) => hostname.includes(keyword));
+    const hit = SITE_RULES.find(([keyword]) => matchesSite(hostname, keyword));
     return { ...BASE_RULE, ...hit ? hit[1] : {} };
   }
   const THINK_BLOCK = /<(think|thinking)>[\s\S]*?<\/\1>/gi;
@@ -350,6 +474,7 @@
   }
   const MIN_VALID_LENGTH = 3;
   const NUMBER_LOOKALIKES = { O: "0", I: "1", L: "1" };
+  const NUMERIC_ANSWER = /^-?\d+(\.\d+)?$/;
   class CaptchaTextCleaner {
     /**
      * @param {object} settings - 响应式设置对象(读取 preserveCase)
@@ -361,18 +486,23 @@
      * @param {string} rawText - AI 返回的原始文本
      * @param {string} hostname - 当前网站域名
      * @returns {{basic: string, refined: string|null, text: string}}
-     *   basic 是提取出答案并去除非法字符后的结果;refined 应用网站规则后的结果(可能为空);
-     *   text 是最终采用的结果,规则纠错失败时回退到 basic。
+     *   basic 是提取出答案并去除非法字符后的结果(数字答案则是原样保留的答案);
+     *   refined 应用网站规则后的结果(可能为空);text 是最终采用的结果,规则纠错失败时回退到 basic。
      */
     clean(rawText, hostname) {
-      const basic = extractAnswer(rawText).replace(/[^a-zA-Z0-9\-]/g, "");
+      const answer = extractAnswer(rawText).replace(/\s/g, "");
+      if (NUMERIC_ANSWER.test(answer)) {
+        return { basic: answer, refined: null, text: answer };
+      }
+      const basic = answer.replace(/[^a-zA-Z0-9]/g, "");
       const refined = this.applySiteRules(basic, hostname);
       return { basic, refined, text: refined || basic };
     }
     /**
-     * 按网站规则纠错:统一大小写(默认转大写,开启 preserveCase 则保留) -> 过滤非法字符 -> 数字倾向替换。
-     * 规则里的字符集是大写的,过滤与替换时忽略大小写,但结果保留原字符。
-     * @returns {string|null} 长度不足时返回 null,表示可能识别不完整
+     * 按网站规则纠错:统一大小写(默认转大写,开启 preserveCase 则保留) -> 数字倾向替换 -> 检查字符集。
+     * 规则里的字符集是大写的,检查时忽略大小写,但结果保留原字符。
+     * 纠错不会删除任何字符:含规则字符集之外的字符,说明规则不适用或识别有误,交回原文。
+     * @returns {string|null} 长度不足或含规则外字符时返回 null,调用方回退到未纠错的原文
      */
     applySiteRules(text, hostname) {
       if (!text) {
@@ -383,15 +513,36 @@
       if (result.length < MIN_VALID_LENGTH) {
         return null;
       }
-      result = result.split("").filter((char) => rule.allowedChars.includes(char.toUpperCase())).join("");
       if (rule.preferNumbers) {
         result = result.replace(/[OIL]/gi, (char) => NUMBER_LOOKALIKES[char.toUpperCase()]);
+      }
+      if (!this._isAllowed(result, rule)) {
+        return null;
       }
       if (result.length !== rule.expectedLength) {
         console.warn(`验证码长度异常: 期望${rule.expectedLength}位，实际${result.length}位`);
       }
       return result;
     }
+    _isAllowed(text, rule) {
+      return text.split("").every((char) => rule.allowedChars.includes(char.toUpperCase()));
+    }
+  }
+  function waitForImageReady(element, timeout) {
+    if (element.tagName !== "IMG" || element.complete) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const finish = () => {
+        clearTimeout(timer);
+        element.removeEventListener("load", finish);
+        element.removeEventListener("error", finish);
+        resolve();
+      };
+      const timer = setTimeout(finish, timeout);
+      element.addEventListener("load", finish);
+      element.addEventListener("error", finish);
+    });
   }
   function collectNewCaptchas(mutations, selector) {
     const found = [];
@@ -449,11 +600,14 @@
         this._attachIcons();
         this._observeMutations();
         this._startPolling();
-        this._handleInitialCaptchas();
+        this._handleInitialCaptchas().catch((error) => this._reportInitFailure(error));
       } catch (error) {
-        console.error("初始化验证码识别功能失败：", error);
-        this.toast.show(`初始化验证码识别功能失败：${error.message || "未知错误"}`, "error");
+        this._reportInitFailure(error);
       }
+    }
+    _reportInitFailure(error) {
+      console.error("初始化验证码识别功能失败：", error);
+      this.toast.show(`初始化验证码识别功能失败：${error.message || "未知错误"}`, "error");
     }
     /** 为页面上所有验证码添加识别图标 */
     _attachIcons() {
@@ -474,12 +628,12 @@
       );
     }
     // ---------- 首次扫描 ----------
-    _handleInitialCaptchas() {
+    async _handleInitialCaptchas() {
       const entries = this.finder.findAll();
       if (entries.length === 0) {
         return;
       }
-      const { ready, failed } = this._convertAll(entries);
+      const { ready, failed } = await this._convertAll(entries);
       if (failed.length > 0) {
         this._reportUnrecognizable(failed, "");
       }
@@ -515,9 +669,9 @@
         setTimeout(() => this._autoRecognizeNew(added), TIMING.AUTO_RECOGNIZE_DELAY);
       }
     }
-    _autoRecognizeNew(newElements) {
+    async _autoRecognizeNew(newElements) {
       const entries = this.finder.findAll().filter((entry) => newElements.includes(entry.element));
-      const { ready, failed } = this._convertAll(entries);
+      const { ready, failed } = await this._convertAll(entries);
       if (failed.length > 0) {
         this._reportUnrecognizable(failed, "新");
       }
@@ -534,9 +688,12 @@
       }
       this.pollTimer = setInterval(() => this._pollOnce(), TIMING.POLL_INTERVAL);
     }
-    /** 补充 MutationObserver 覆盖不到的验证码(如仅由云端规则命中的元素) */
-    _pollOnce() {
-      if (this.blocklist.isCurrentDomainBlocked()) {
+    /**
+     * 补充 MutationObserver 覆盖不到的验证码(如仅由云端规则命中的元素)。
+     * 页面在后台时跳过:回到前台后的下一轮扫描会补上。
+     */
+    async _pollOnce() {
+      if (this.blocklist.isCurrentDomainBlocked() || document.hidden) {
         return;
       }
       try {
@@ -546,7 +703,7 @@
         }
         this.toast.show(`检测到 ${fresh.length} 个验证码，点击识别图标开始识别`, "info");
         if (this.settings.autoRecognize) {
-          const { ready } = this._convertAll(fresh);
+          const { ready } = await this._convertAll(fresh);
           this._processAll(ready);
         }
       } catch (error) {
@@ -571,8 +728,14 @@
       return fresh;
     }
     // ---------- 自动识别的公共步骤 ----------
-    /** 逐个转换图片,分为可识别(带转换结果)与不可识别(带原因)两组 */
-    _convertAll(entries) {
+    /**
+     * 逐个转换图片,分为可识别(带转换结果)与不可识别(带原因)两组。
+     * 还没加载完的图片先等它加载结束(有超时),避免刚出现的验证码因“尚未加载完成”被放弃。
+     */
+    async _convertAll(entries) {
+      await Promise.all(
+        entries.map((entry) => waitForImageReady(entry.element, TIMING.IMAGE_READY_TIMEOUT))
+      );
       const ready = [];
       const failed = [];
       entries.forEach((entry) => {
@@ -624,7 +787,8 @@
     find(captchaElement) {
       const selectors = this._buildSelectors();
       const parent = captchaElement.parentElement;
-      return this._queryFirst(parent, selectors) || this._queryFirst(this._closestForm(parent), selectors) || this._queryFirst(document, selectors) || this._guessByAttributes();
+      const scope = this._closestForm(parent) || document;
+      return this._queryFirst(parent, selectors) || this._queryFirst(scope, selectors) || this._guessByAttributes(scope);
     }
     /**
      * 基础与规则选择器都排除 hidden 输入框;规则里的选择器会再原样追加一份,
@@ -661,10 +825,10 @@
       }
       return node && node.tagName === "FORM" ? node : null;
     }
-    /** 最后的兜底:优先带验证码特征的输入框,否则取页面第一个非 hidden 输入框 */
-    _guessByAttributes() {
-      const inputs = [...document.querySelectorAll(`input${NOT_HIDDEN}`)];
-      return inputs.find(looksLikeCaptchaInput) || inputs[0] || null;
+    /** 最后的兜底:范围内带验证码特征的非 hidden 输入框,没有则返回 null */
+    _guessByAttributes(scope) {
+      const inputs = [...scope.querySelectorAll(`input${NOT_HIDDEN}`)];
+      return inputs.find(looksLikeCaptchaInput) || null;
     }
   }
   class RecognitionIconManager {
@@ -692,6 +856,10 @@
     }
     setLoading(icon) {
       icon.classList.add(ICON_CLASS.LOADING);
+    }
+    /** 结束加载状态,不显示成功/失败(识别结果已作废时使用) */
+    clearLoading(icon) {
+      icon.classList.remove(ICON_CLASS.LOADING);
     }
     /** 结束加载状态,短暂显示成功/失败图标后恢复 */
     showResult(icon, success) {
@@ -4526,7 +4694,7 @@ ${SIMPLE_PROMPT}`;
     }
   }
   const name = "CAPTCHA-automatic-recognition";
-  const version = "1.5.1";
+  const version = "1.5.2";
   const author = "Alex";
   const description = "Automatically recognize the CAPTCHA on the webpage and fill it into the input box, click the recognition icon to trigger recognition.";
   const type = "module";
