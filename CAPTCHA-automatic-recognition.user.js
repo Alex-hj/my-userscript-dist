@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI验证码自动识别填充
 // @namespace    https://github.com/Alex-hj/my-userscript-dist
-// @version      1.5.0
+// @version      1.5.1
 // @author       Alex
 // @description  自动识别网页上的验证码并填充到输入框中，点击识别图标触发识别。
 // @license      Apache-2.0
@@ -352,6 +352,12 @@
   const NUMBER_LOOKALIKES = { O: "0", I: "1", L: "1" };
   class CaptchaTextCleaner {
     /**
+     * @param {object} settings - 响应式设置对象(读取 preserveCase)
+     */
+    constructor(settings) {
+      this.settings = settings;
+    }
+    /**
      * @param {string} rawText - AI 返回的原始文本
      * @param {string} hostname - 当前网站域名
      * @returns {{basic: string, refined: string|null, text: string}}
@@ -364,7 +370,8 @@
       return { basic, refined, text: refined || basic };
     }
     /**
-     * 按网站规则纠错:转大写 -> 过滤非法字符 -> 数字倾向替换。
+     * 按网站规则纠错:统一大小写(默认转大写,开启 preserveCase 则保留) -> 过滤非法字符 -> 数字倾向替换。
+     * 规则里的字符集是大写的,过滤与替换时忽略大小写,但结果保留原字符。
      * @returns {string|null} 长度不足时返回 null,表示可能识别不完整
      */
     applySiteRules(text, hostname) {
@@ -372,13 +379,13 @@
         return text;
       }
       const rule = getSiteCaptchaRule(hostname);
-      let result = text.toUpperCase();
+      let result = this.settings.preserveCase ? text : text.toUpperCase();
       if (result.length < MIN_VALID_LENGTH) {
         return null;
       }
-      result = result.split("").filter((char) => rule.allowedChars.includes(char)).join("");
+      result = result.split("").filter((char) => rule.allowedChars.includes(char.toUpperCase())).join("");
       if (rule.preferNumbers) {
-        result = result.replace(/[OIL]/g, (char) => NUMBER_LOOKALIKES[char]);
+        result = result.replace(/[OIL]/gi, (char) => NUMBER_LOOKALIKES[char.toUpperCase()]);
       }
       if (result.length !== rule.expectedLength) {
         console.warn(`验证码长度异常: 期望${rule.expectedLength}位，实际${result.length}位`);
@@ -3393,7 +3400,10 @@
       defaultModel: "claude-sonnet-5",
       knownModels: ["claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5", "claude-fable-5-1"],
       modelsSource: "api",
-      params: {}
+      params: {},
+      // Sonnet 5 / Opus 5 默认开启思考,思考 token 计入 max_tokens;验证码识别用不到,关闭后更快更省。
+      // Fable 5.1 不接受关闭思考(会返回 400),Haiku 4.5 只支持手动的扩展思考,所以只匹配前两者
+      modelParams: [{ pattern: "^claude-(sonnet|opus)-5$", params: { thinking: { type: "disabled" } } }]
     },
     {
       id: "gemini",
@@ -3545,6 +3555,8 @@
       ...createProviderFields(),
       // 功能开关
       autoRecognize: false,
+      // 保留识别结果的大小写;默认统一转为大写(适合不区分大小写或全大写的验证码)
+      preserveCase: false,
       copyToClipboard: true,
       showNotification: true,
       autoFetchCloudRules: false,
@@ -4340,7 +4352,7 @@ ${SIMPLE_PROMPT}`;
   }
   const MESSAGES_SUFFIX = "/messages";
   const API_VERSION = "2023-06-01";
-  const MAX_TOKENS = 1024;
+  const MAX_TOKENS = 4096;
   class AnthropicProvider extends BaseProvider {
     endpoint() {
       return normalizeEndpoint(this.setting("ApiUrl") || this.meta.defaultUrl, MESSAGES_SUFFIX);
@@ -4514,7 +4526,7 @@ ${SIMPLE_PROMPT}`;
     }
   }
   const name = "CAPTCHA-automatic-recognition";
-  const version = "1.5.0";
+  const version = "1.5.1";
   const author = "Alex";
   const description = "Automatically recognize the CAPTCHA on the webpage and fill it into the input box, click the recognition icon to trigger recognition.";
   const type = "module";
@@ -4808,6 +4820,7 @@ ${SIMPLE_PROMPT}`;
     setup(__props) {
       const CHECKBOX_OPTIONS = [
         { id: "autoRecognize", label: "验证码图片变化时自动识别" },
+        { id: "preserveCase", label: "保留识别结果的大小写（默认统一转为大写）" },
         { id: "copyToClipboard", label: "自动复制到剪贴板" },
         { id: "showNotification", label: "显示右上角通知提示" },
         { id: "autoFetchCloudRules", label: "每日首次运行时自动获取云端规则" }
@@ -5173,7 +5186,7 @@ ${SIMPLE_PROMPT}`;
     const icons = new RecognitionIconManager();
     const converter = new ImageConverter();
     const blocklist = new DomainBlocklist(settings);
-    const cleaner = new CaptchaTextCleaner();
+    const cleaner = new CaptchaTextCleaner(settings);
     const recognizer = new CaptchaRecognizer({ registry, cleaner, toast, panel });
     const processor = new CaptchaProcessor({
       settings,
