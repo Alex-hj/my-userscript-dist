@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         AI验证码自动识别填充
-// @namespace    https://github.com/anghunk/UserScript
-// @version      1.4.2
+// @namespace    https://github.com/Alex-hj/my-userscript-dist
+// @version      1.5.0
 // @author       Alex
 // @description  自动识别网页上的验证码并填充到输入框中，点击识别图标触发识别。
 // @license      Apache-2.0
-// @icon         https://raw.githubusercontent.com/anghunk/UserScript/refs/heads/main/CAPTCHA-automatic-recognition/src/assets/logo.png
+// @icon         https://raw.githubusercontent.com/Alex-hj/my-userscript-dist/main/logo.png
 // @homepageURL  https://github.com/Alex-hj/my-userscript-dist
 // @supportURL   https://github.com/Alex-hj/my-userscript-dist/issues
 // @downloadURL  https://raw.githubusercontent.com/Alex-hj/my-userscript-dist/main/CAPTCHA-automatic-recognition.user.js
@@ -19,46 +19,824 @@
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
 
-(t=>{if(typeof GM_addStyle=="function"){GM_addStyle(t);return}const o=document.createElement("style");o.textContent=t,document.head.append(o)})(` .captcha-recognition-container{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji",Segoe UI Symbol!important;font-size:14px!important;line-height:1.5!important;color:#333!important;box-sizing:border-box!important}.captcha-recognition-container *,.captcha-recognition-container *:before,.captcha-recognition-container *:after{box-sizing:border-box!important;font-family:inherit!important}.captcha-recognition-container input,.captcha-recognition-container textarea,.captcha-recognition-container select,.captcha-recognition-container button{font-family:inherit!important;font-size:inherit!important;line-height:inherit!important}.captcha-recognition-icon{display:inline-block!important;width:20px!important;height:20px!important;vertical-align:middle!important;margin-left:5px!important;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>')!important;background-size:contain!important;cursor:pointer!important;position:relative!important;z-index:999!important;opacity:.7!important;transition:opacity .2s!important}.captcha-recognition-icon:hover{opacity:1!important}.input-group-append{position:relative!important}.input-group-append .captcha-recognition-icon{position:absolute!important;left:100%!important}.captcha-recognition-loading{background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>')!important;animation:captcha-spin 1s linear infinite!important}@keyframes captcha-spin{0%{transform:rotate(0)}to{transform:rotate(360deg)}}.captcha-recognition-success{background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>')!important}.captcha-recognition-error{background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>')!important}body.captcha-settings-open{overflow:hidden!important}.captcha-settings-overlay{position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;background-color:#00000080!important;z-index:2147483646!important}.captcha-settings-modal{position:fixed!important;top:0!important;right:0!important;width:100%!important;max-width:400px!important;height:100vh!important;padding-bottom:60px!important;background-color:#fff!important;z-index:2147483647!important;text-align:left!important;box-shadow:-2px 0 10px #0000001a!important;transform:translate(100%)!important;transition:transform .3s linear!important}.captcha-settings-modal.show{transform:translate(0)!important}.captcha-settings-content{background-color:transparent!important;color:#333!important;padding:20px 15px 20px 20px!important;width:100%!important;height:100%!important;overflow-y:scroll!important;box-shadow:none!important;display:flex!important;flex-direction:column!important}.captcha-settings-content::-webkit-scrollbar,.settings-card::-webkit-scrollbar,.domain-textarea::-webkit-scrollbar,.captcha-settings-content textarea::-webkit-scrollbar{width:4px!important;height:8px!important}.captcha-settings-content::-webkit-scrollbar-track,.settings-card::-webkit-scrollbar-track,.domain-textarea::-webkit-scrollbar-track,.captcha-settings-content textarea::-webkit-scrollbar-track{background:#f1f1f1!important;border-radius:4px!important}.captcha-settings-content::-webkit-scrollbar-thumb,.settings-card::-webkit-scrollbar-thumb,.domain-textarea::-webkit-scrollbar-thumb,.captcha-settings-content textarea::-webkit-scrollbar-thumb{background:#ccc!important;border-radius:4px!important}.captcha-settings-content h3{margin-top:0!important;color:#333!important;font-size:18px!important;margin-bottom:16px!important;text-align:center!important;font-weight:700!important}.captcha-settings-content h3 span{font-size:14px!important}.captcha-settings-item{margin-bottom:12px!important;display:flex!important;flex-direction:column}.captcha-settings-item label{display:block!important;margin-bottom:4px!important;color:#555!important;font-size:14px!important}.captcha-settings-item input[type=text],.captcha-settings-item select,.captcha-settings-item textarea{width:100%!important;padding:0 8px!important;border:1px solid #ddd!important;background:none!important;border-radius:4px!important;font-size:14px!important;box-sizing:border-box!important;background:#fff!important;color:#333!important;margin:0!important}.captcha-settings-item input[type=text],.captcha-settings-item select{height:33px!important}.captcha-settings-item textarea{resize:vertical!important;min-height:80px!important}.captcha-settings-item small{font-size:12px!important;color:#777!important;display:block!important;margin-top:4px!important;word-break:break-all!important}.textarea-with-button{position:relative!important;display:flex!important;flex-direction:column!important}.use-default-prompt{position:absolute!important;top:5px!important;right:5px!important;background-color:#f1f1f1!important;border:1px solid #ddd!important;border-radius:4px!important;padding:4px 8px!important;font-size:12px!important;cursor:pointer!important;color:#333!important;transition:background-color .2s!important}.use-default-prompt:hover{background-color:#e4e4e4!important}.captcha-settings-buttons{display:flex!important;justify-content:flex-end!important;margin-top:20px!important;gap:10px!important;position:absolute!important;background:#fff!important;width:100%;bottom:0!important;left:0!important;z-index:10!important;padding:10px 15px;box-shadow:1px 2px 5px #0000001a}.captcha-settings-buttons button{padding:8px 16px!important;border:none!important;border-radius:4px!important;cursor:pointer!important;font-size:14px!important;transition:background-color .2s!important}.captcha-settings-buttons button:first-child{background-color:#1a73e8!important;color:#fff!important}.captcha-settings-buttons button:first-child:hover{background-color:#1557b0!important}.captcha-settings-buttons button:last-child{background-color:#f1f1f1!important;color:#333!important}.captcha-settings-buttons button:last-child:hover{background-color:#e4e4e4!important}.dev-settings-button{width:50px!important;height:50px!important;display:flex!important;align-items:center!important;justify-content:center!important;position:fixed!important;bottom:20px!important;right:20px!important;background-color:#fff!important;color:#fff!important;border-radius:50%!important;cursor:pointer!important;z-index:9999!important;font-size:14px!important;box-shadow:0 2px 5px #0003!important;transition:background-color .2s!important}.dev-settings-button svg{color:#1557b0}.dev-settings-button:hover{opacity:.9}#captcha-toast-container{position:fixed!important;top:20px!important;right:20px!important;z-index:9999!important;display:flex!important;flex-direction:column!important;gap:10px!important;pointer-events:none!important;text-align:left!important}.captcha-toast{width:280px!important;padding:12px 16px!important;border-radius:4px!important;box-shadow:0 4px 12px #00000026!important;color:#fff!important;font-size:14px!important;opacity:0!important;transform:translateY(-20px)!important;transition:all .3s ease!important;pointer-events:auto!important;word-break:break-word!important;text-align:left!important}.captcha-toast-show{opacity:1!important;transform:translateY(0)!important}.captcha-toast-hide{opacity:0!important;transform:translateY(-20px)!important}.captcha-toast-info{background-color:#1a73e8!important}.captcha-toast-success{background-color:#4caf50!important}.captcha-toast-error{background-color:#f44336!important}.input-with-button{position:relative!important;display:flex!important;align-items:center!important}.input-with-button input{flex:1!important}.test-api-button{background-color:#1a73e8!important;color:#fff!important;border:none!important;border-radius:4px!important;padding:8px 12px!important;font-size:14px!important;cursor:pointer!important;transition:background-color .2s,color .2s!important;min-width:80px!important;display:flex!important;justify-content:center!important;align-items:center!important;height:33px!important;margin-left:10px!important}.captcha-settings-tip{margin:16px 0!important;padding:12px!important;background-color:#f8f9fa!important;border-left:4px solid #1a73e8!important;border-radius:4px!important;font-size:13px!important;color:#333!important}.captcha-settings-tip p{margin:0 0 8px!important}.captcha-settings-tip ol{margin:8px 0 0!important;padding-left:24px!important}.captcha-settings-tip li{margin-bottom:4px!important}.test-api-button:hover{background-color:#1557b0!important}.test-api-button.test-loading{background-color:#f1f1f1!important;color:#666!important;position:relative!important}.test-api-button.test-loading:after{content:""!important;position:absolute!important;width:12px!important;height:12px!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%);border:2px solid #666!important;border-radius:50%!important;border-top-color:transparent!important;animation:captcha-spin-transform 1s linear infinite!important}@keyframes captcha-spin-transform{0%{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}.test-api-button.test-success{background-color:#4caf50!important;color:#fff!important}.test-api-button.test-error{background-color:#f44336!important;color:#fff!important}img[style="z-index: 2; position: absolute; bottom: -11px; left: 206px; width: 88px; height: 40px;"]+.captcha-recognition-icon{position:absolute!important;left:270px!important}.authcode.co>a:nth-child(2)>#authImage+.captcha-recognition-icon{display:none!important}#yzCode{position:relative}#yzCode>.captcha-recognition-icon{position:absolute!important;right:0!important}.code-plane .img-code+.captcha-recognition-icon{position:absolute!important}.settings-nav{display:flex!important;border-bottom:1px solid #eee!important;margin-bottom:20px!important;padding-bottom:2px!important}.settings-nav::-webkit-scrollbar{display:none!important}.settings-nav-item{padding:10px 15px!important;cursor:pointer!important;font-size:14px!important;color:#666!important;position:relative!important;transition:all .3s!important;-webkit-user-select:none!important;user-select:none!important;white-space:nowrap!important}.settings-nav-item:hover,.settings-nav-item.active{color:#1a73e8!important}.settings-nav-item.active:after{content:""!important;position:absolute!important;bottom:-2px!important;left:0!important;width:100%!important;height:2px!important;background-color:#1a73e8!important;border-radius:2px!important}.settings-content{flex:1!important;position:relative!important}.settings-content-tab{animation:captcha-fadeIn .3s ease!important;width:100%!important}@keyframes captcha-fadeIn{0%{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}.settings-card{background-color:#f9f9f9!important;border-radius:8px!important;padding:15px!important;margin-bottom:15px!important;border:1px solid #eee!important;box-shadow:0 2px 4px #0000000d!important;height:100%!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important}.settings-card-title{font-weight:700!important;margin-bottom:12px!important;color:#333!important;font-size:15px!important;display:flex!important;align-items:center!important;justify-content:space-between!important}.settings-card-title .api-type{color:#1a73e8!important}.settings-section{margin-bottom:20px!important}.settings-section-title{font-weight:700!important;margin-bottom:10px!important;color:#333!important;font-size:15px!important;border-bottom:1px solid #eee!important;padding-bottom:5px!important}.advanced-settings-warning{font-size:12px!important;color:#ff4d4f!important;margin-bottom:10px!important;font-weight:700!important;padding:8px!important;background-color:#fff2f0!important;border-radius:4px!important;border:1px solid #ffccc7!important}.tutorial-link{font-size:12px!important;color:#1890ff!important;margin-left:8px!important;text-decoration:none!important;font-weight:400!important}.tutorial-link:hover{text-decoration:underline!important}.custom-selectors{display:flex!important;flex-direction:column!important;gap:8px!important}.selector-item{display:flex!important;align-items:center!important;gap:8px!important}.selector-item input{flex:1!important}.remove-selector{background-color:#ff4d4f!important;color:#fff!important;border:none!important;border-radius:50%!important;width:24px!important;height:24px!important;font-size:16px!important;line-height:1!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important}.add-selector{margin-top:8px!important;background-color:#1890ff!important;color:#fff!important;border:none!important;border-radius:4px!important;padding:4px 12px!important;font-size:14px!important;cursor:pointer!important;align-self:flex-start!important}.add-selector:hover{background-color:#40a9ff!important}.remove-selector:hover{background-color:#ff7875!important}.domain-textarea{width:100%!important;border:1px solid #ddd!important;border-radius:4px!important;padding:8px!important;resize:vertical!important;font-family:monospace!important;font-size:14px!important}.reload-rules-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:6px 12px!important;height:34px!important;font-size:14px!important;border-radius:4px!important;border:1px solid #ddd!important;background-color:#f7f7f7!important;cursor:pointer!important;transition:all .3s!important;min-width:120px!important}.reload-rules-button:hover{background-color:#e7e7e7!important}.reload-rules-button.test-loading{background-color:#f5f5f5!important;position:relative!important;color:transparent!important}.reload-rules-button.test-loading:after{content:""!important;width:16px!important;height:16px!important;border:2px solid #666!important;border-top-color:transparent!important;border-radius:50%!important;position:absolute!important;left:50%!important;top:50%!important;margin-left:-8px!important;margin-top:-8px!important;animation:captcha-spin 1s linear infinite!important}.reload-rules-button.test-success{background-color:#eaf7ea!important;border-color:#c3e6c3!important;color:#2a862a!important}.reload-rules-button.test-error{background-color:#fce7e7!important;border-color:#f5c2c2!important;color:#d63030!important}.rules-management{display:flex!important;flex-direction:column!important;gap:10px!important}.rules-url-input{display:flex!important;flex-direction:column!important;gap:5px!important}.rules-url-input input{width:100%!important;padding:8px!important;border:1px solid #ddd!important;border-radius:4px!important;font-size:14px!important}.rules-url-input small{color:#666!important;font-size:12px!important}@media (max-width: 768px){.settings-nav-item{padding:10px!important}} `);
+(t=>{if(typeof GM_addStyle=="function"){GM_addStyle(t);return}const o=document.createElement("style");o.textContent=t,document.head.append(o)})(` .captcha-recognition-container{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji",Segoe UI Symbol!important;font-size:14px!important;line-height:1.5!important;color:#333!important;box-sizing:border-box!important}.captcha-recognition-container *,.captcha-recognition-container *:before,.captcha-recognition-container *:after{box-sizing:border-box!important;font-family:inherit!important}.captcha-recognition-container input,.captcha-recognition-container textarea,.captcha-recognition-container select,.captcha-recognition-container button{font-family:inherit!important;font-size:inherit!important;line-height:inherit!important}.captcha-recognition-icon{display:inline-block!important;width:20px!important;height:20px!important;vertical-align:middle!important;margin-left:5px!important;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>')!important;background-size:contain!important;cursor:pointer!important;position:relative!important;z-index:999!important;opacity:.7!important;transition:opacity .2s!important}.captcha-recognition-icon:hover{opacity:1!important}.input-group-append{position:relative!important}.input-group-append .captcha-recognition-icon{position:absolute!important;left:100%!important}.captcha-recognition-loading{background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>')!important;animation:captcha-spin 1s linear infinite!important}@keyframes captcha-spin{0%{transform:rotate(0)}to{transform:rotate(360deg)}}.captcha-recognition-success{background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>')!important}.captcha-recognition-error{background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>')!important}body.captcha-settings-open{overflow:hidden!important}.captcha-settings-overlay{position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;background-color:#00000080!important;z-index:2147483646!important}.captcha-settings-modal{position:fixed!important;top:0!important;right:0!important;width:100%!important;max-width:400px!important;height:100vh!important;padding-bottom:60px!important;background-color:#fff!important;z-index:2147483647!important;text-align:left!important;box-shadow:-2px 0 10px #0000001a!important;transform:translate(100%)!important;transition:transform .3s linear!important}.captcha-settings-modal.show{transform:translate(0)!important}.captcha-settings-content{background-color:transparent!important;color:#333!important;padding:20px 15px 20px 20px!important;width:100%!important;height:100%!important;overflow-y:scroll!important;box-shadow:none!important;display:flex!important;flex-direction:column!important}.captcha-settings-content::-webkit-scrollbar,.settings-card::-webkit-scrollbar,.domain-textarea::-webkit-scrollbar,.captcha-settings-content textarea::-webkit-scrollbar{width:4px!important;height:8px!important}.captcha-settings-content::-webkit-scrollbar-track,.settings-card::-webkit-scrollbar-track,.domain-textarea::-webkit-scrollbar-track,.captcha-settings-content textarea::-webkit-scrollbar-track{background:#f1f1f1!important;border-radius:4px!important}.captcha-settings-content::-webkit-scrollbar-thumb,.settings-card::-webkit-scrollbar-thumb,.domain-textarea::-webkit-scrollbar-thumb,.captcha-settings-content textarea::-webkit-scrollbar-thumb{background:#ccc!important;border-radius:4px!important}.captcha-settings-content h3{margin-top:0!important;color:#333!important;font-size:18px!important;margin-bottom:16px!important;text-align:center!important;font-weight:700!important}.captcha-settings-content h3 span{font-size:14px!important}.captcha-settings-buttons{display:flex!important;justify-content:flex-end!important;margin-top:20px!important;gap:10px!important;position:absolute!important;background:#fff!important;width:100%;bottom:0!important;left:0!important;z-index:10!important;padding:10px 15px;box-shadow:1px 2px 5px #0000001a}.captcha-settings-buttons button{padding:8px 16px!important;border:none!important;border-radius:4px!important;cursor:pointer!important;font-size:14px!important;transition:background-color .2s!important}.captcha-settings-buttons button:first-child{background-color:#1a73e8!important;color:#fff!important}.captcha-settings-buttons button:first-child:hover{background-color:#1557b0!important}.captcha-settings-buttons button:last-child{background-color:#f1f1f1!important;color:#333!important}.captcha-settings-buttons button:last-child:hover{background-color:#e4e4e4!important}.dev-settings-button{width:50px!important;height:50px!important;display:flex!important;align-items:center!important;justify-content:center!important;position:fixed!important;bottom:20px!important;right:20px!important;background-color:#fff!important;color:#fff!important;border-radius:50%!important;cursor:pointer!important;z-index:9999!important;font-size:14px!important;box-shadow:0 2px 5px #0003!important;transition:background-color .2s!important}.dev-settings-button svg{color:#1557b0}.dev-settings-button:hover{opacity:.9}.settings-nav{display:flex!important;border-bottom:1px solid #eee!important;margin-bottom:20px!important;padding-bottom:2px!important}.settings-nav::-webkit-scrollbar{display:none!important}.settings-nav-item{padding:10px 15px!important;cursor:pointer!important;font-size:14px!important;color:#666!important;position:relative!important;transition:all .3s!important;-webkit-user-select:none!important;user-select:none!important;white-space:nowrap!important}.settings-nav-item:hover,.settings-nav-item.active{color:#1a73e8!important}.settings-nav-item.active:after{content:""!important;position:absolute!important;bottom:-2px!important;left:0!important;width:100%!important;height:2px!important;background-color:#1a73e8!important;border-radius:2px!important}.settings-content{flex:1!important;position:relative!important}.settings-content-tab{animation:captcha-fadeIn .3s ease!important;width:100%!important}@keyframes captcha-fadeIn{0%{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}.settings-card{background-color:#f9f9f9!important;border-radius:8px!important;padding:15px!important;margin-bottom:15px!important;border:1px solid #eee!important;box-shadow:0 2px 4px #0000000d!important;height:100%!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important}.settings-card-title{font-weight:700!important;margin-bottom:12px!important;color:#333!important;font-size:15px!important;display:flex!important;align-items:center!important;justify-content:space-between!important}.settings-card-title .api-type{color:#1a73e8!important}@media (max-width: 768px){.settings-nav-item{padding:10px!important}}.captcha-settings-item{margin-bottom:12px!important;display:flex!important;flex-direction:column}.captcha-settings-item label{display:block!important;margin-bottom:4px!important;color:#555!important;font-size:14px!important}.captcha-settings-item input[type=text],.captcha-settings-item select,.captcha-settings-item textarea{width:100%!important;padding:0 8px!important;border:1px solid #ddd!important;background:none!important;border-radius:4px!important;font-size:14px!important;box-sizing:border-box!important;background:#fff!important;color:#333!important;margin:0!important}.captcha-settings-item input[type=text],.captcha-settings-item select{height:33px!important}.captcha-settings-item textarea{resize:vertical!important;min-height:80px!important}.captcha-settings-item small{font-size:12px!important;color:#777!important;display:block!important;margin-top:4px!important;word-break:break-all!important}.captcha-settings-item small.field-error{color:#ff4d4f!important}.textarea-with-button{position:relative!important;display:flex!important;flex-direction:column!important}.use-default-prompt{position:absolute!important;top:5px!important;right:5px!important;background-color:#f1f1f1!important;border:1px solid #ddd!important;border-radius:4px!important;padding:4px 8px!important;font-size:12px!important;cursor:pointer!important;color:#333!important;transition:background-color .2s!important}.use-default-prompt:hover{background-color:#e4e4e4!important}.input-with-button{position:relative!important;display:flex!important;align-items:center!important}.input-with-button input{flex:1!important}.advanced-settings-warning{font-size:12px!important;color:#ff4d4f!important;margin-bottom:10px!important;font-weight:700!important;padding:8px!important;background-color:#fff2f0!important;border-radius:4px!important;border:1px solid #ffccc7!important}.tutorial-link{font-size:12px!important;color:#1890ff!important;margin-left:8px!important;text-decoration:none!important;font-weight:400!important}.tutorial-link:hover{text-decoration:underline!important}.custom-selectors{display:flex!important;flex-direction:column!important;gap:8px!important}.selector-item{display:flex!important;align-items:center!important;gap:8px!important}.selector-item input{flex:1!important}.remove-selector{background-color:#ff4d4f!important;color:#fff!important;border:none!important;border-radius:50%!important;width:24px!important;height:24px!important;font-size:16px!important;line-height:1!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important}.add-selector{margin-top:8px!important;background-color:#1890ff!important;color:#fff!important;border:none!important;border-radius:4px!important;padding:4px 12px!important;font-size:14px!important;cursor:pointer!important;align-self:flex-start!important}.add-selector:hover{background-color:#40a9ff!important}.remove-selector:hover{background-color:#ff7875!important}.domain-textarea{width:100%!important;border:1px solid #ddd!important;border-radius:4px!important;padding:8px!important;resize:vertical!important;font-family:monospace!important;font-size:14px!important}.rules-management{display:flex!important;flex-direction:column!important;gap:10px!important}.rules-url-input{display:flex!important;flex-direction:column!important;gap:5px!important}.rules-url-input input{width:100%!important;padding:8px!important;border:1px solid #ddd!important;border-radius:4px!important;font-size:14px!important}.rules-url-input small{color:#666!important;font-size:12px!important}.test-api-button{background-color:#1a73e8!important;color:#fff!important;border:none!important;border-radius:4px!important;padding:8px 12px!important;font-size:14px!important;cursor:pointer!important;transition:background-color .2s,color .2s!important;min-width:80px!important;display:flex!important;justify-content:center!important;align-items:center!important;height:33px!important;margin-left:10px!important}.test-api-button:hover{background-color:#1557b0!important}.test-api-button.test-loading{background-color:#f1f1f1!important;color:#666!important;position:relative!important}.test-api-button.test-loading:after{content:""!important;position:absolute!important;width:12px!important;height:12px!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%);border:2px solid #666!important;border-radius:50%!important;border-top-color:transparent!important;animation:captcha-spin-transform 1s linear infinite!important}@keyframes captcha-spin-transform{0%{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}.test-api-button.test-success{background-color:#4caf50!important;color:#fff!important}.test-api-button.test-error{background-color:#f44336!important;color:#fff!important}.reload-rules-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:6px 12px!important;height:34px!important;font-size:14px!important;border-radius:4px!important;border:1px solid #ddd!important;background-color:#f7f7f7!important;cursor:pointer!important;transition:all .3s!important;min-width:120px!important}.reload-rules-button:hover{background-color:#e7e7e7!important}.reload-rules-button.test-loading{background-color:#f5f5f5!important;position:relative!important;color:transparent!important}.reload-rules-button.test-loading:after{content:""!important;width:16px!important;height:16px!important;border:2px solid #666!important;border-top-color:transparent!important;border-radius:50%!important;position:absolute!important;left:50%!important;top:50%!important;margin-left:-8px!important;margin-top:-8px!important;animation:captcha-spin 1s linear infinite!important}.reload-rules-button.test-success{background-color:#eaf7ea!important;border-color:#c3e6c3!important;color:#2a862a!important}.reload-rules-button.test-error{background-color:#fce7e7!important;border-color:#f5c2c2!important;color:#d63030!important}#captcha-toast-container{position:fixed!important;top:20px!important;right:20px!important;z-index:9999!important;display:flex!important;flex-direction:column!important;gap:10px!important;pointer-events:none!important;text-align:left!important}.captcha-toast{width:280px!important;padding:12px 16px!important;border-radius:4px!important;box-shadow:0 4px 12px #00000026!important;color:#fff!important;font-size:14px!important;opacity:0!important;transform:translateY(-20px)!important;transition:all .3s ease!important;pointer-events:auto!important;word-break:break-word!important;text-align:left!important}.captcha-toast-show{opacity:1!important;transform:translateY(0)!important}.captcha-toast-hide{opacity:0!important;transform:translateY(-20px)!important}.captcha-toast-info{background-color:#1a73e8!important}.captcha-toast-success{background-color:#4caf50!important}.captcha-toast-error{background-color:#f44336!important}img[style="z-index: 2; position: absolute; bottom: -11px; left: 206px; width: 88px; height: 40px;"]+.captcha-recognition-icon{position:absolute!important;left:270px!important}.authcode.co>a:nth-child(2)>#authImage+.captcha-recognition-icon{display:none!important}#yzCode{position:relative}#yzCode>.captcha-recognition-icon{position:absolute!important;right:0!important}.code-plane .img-code+.captcha-recognition-icon{position:absolute!important} `);
 
 (function (vue) {
   'use strict';
 
-  const name = "CAPTCHA-automatic-recognition";
-  const version = "1.4.2";
-  const author = "Alex";
-  const description = "Automatically recognize the CAPTCHA on the webpage and fill it into the input box, click the recognition icon to trigger recognition.";
-  const type = "module";
-  const license = "Apache-2.0";
-  const scripts = {
-    dev: "vite --mode development",
-    build: "vite build",
-    preview: "vite preview"
+  const STORAGE_KEYS = {
+    SETTINGS: "captchaSettings",
+    RULES: "captchaRules",
+    LAST_CONFIG_UPDATE: "lastConfigUpdate"
   };
-  const dependencies = {
-    vue: "^3.4.27",
-    webdav: "^5.7.1",
-    axios: "^1.6.2"
+  const PUBLISH_REPO = "Alex-hj/my-userscript-dist";
+  const DEFAULT_RULES_URL = `https://raw.githubusercontent.com/${PUBLISH_REPO}/main/rules.json`;
+  const TUTORIAL_URL = `https://github.com/${PUBLISH_REPO}/blob/main/advanced-settings.md`;
+  const ICON_CLASS = {
+    BASE: "captcha-recognition-icon",
+    LOADING: "captcha-recognition-loading",
+    SUCCESS: "captcha-recognition-success",
+    ERROR: "captcha-recognition-error"
   };
-  const devDependencies = {
-    "@vitejs/plugin-vue": "^5.0.4",
-    less: "^4.1.0",
-    "less-loader": "^8.0.0",
-    "style-loader": "^2.0.0",
-    vite: "^5.2.12",
-    "vite-plugin-monkey": "^4.0.0"
+  const TIMING = {
+    /** 定时扫描页面验证码的间隔 */
+    POLL_INTERVAL: 500,
+    /** DOM 变化后等待图片加载完成再自动识别 */
+    AUTO_RECOGNIZE_DELAY: 500,
+    /** 页面加载完成后延迟初始化,确保验证码图片已渲染 */
+    INIT_DELAY: 1e3,
+    /** 识别图标成功/失败状态的持续时间 */
+    ICON_RESULT_DURATION: 2e3,
+    /** 设置面板中测试按钮状态的复位时间 */
+    STATUS_RESET_DELAY: 3e3
   };
-  const packageJson = {
-    name,
-    version,
-    author,
-    description,
-    type,
-    license,
-    scripts,
-    dependencies,
-    devDependencies
+  function relocateIconWhenReady(targetSelector, placeIcon) {
+    const observer = new MutationObserver(() => {
+      const target = document.querySelector(targetSelector);
+      const icon = target && document.querySelector(`.${ICON_CLASS.BASE}`);
+      if (!icon) {
+        return;
+      }
+      icon.parentNode.removeChild(icon);
+      placeIcon(icon, target);
+      observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+  function applyNportalNtut() {
+    relocateIconWhenReady(".authcode.co", (icon, target) => target.appendChild(icon));
+  }
+  function applyLuogu() {
+    const style = document.createElement("style");
+    style.textContent = `
+    .l-form-layout .img .${ICON_CLASS.BASE} {
+      display: none !important;
+    }
+  `;
+    document.head.appendChild(style);
+    relocateIconWhenReady(
+      ".l-form-layout .img",
+      (icon, target) => target.parentNode.insertBefore(icon, target.nextSibling)
+    );
+  }
+  const SITE_HANDLERS = {
+    "nportal.ntut.edu.tw": applyNportalNtut,
+    "www.luogu.com.cn": applyLuogu
   };
+  function applySiteCompat() {
+    try {
+      const handler = SITE_HANDLERS[window.location.host];
+      if (handler) {
+        handler();
+      }
+    } catch (error) {
+      console.error("验证码识别插件创建阶段出错：", error);
+    }
+  }
+  function isRendered(element) {
+    if (!element.isConnected) {
+      return false;
+    }
+    const rect = element.getClientRects()[0];
+    if (!rect || rect.width === 0 || rect.height === 0) {
+      return false;
+    }
+    return window.getComputedStyle(element).visibility !== "hidden";
+  }
+  function isCaptchaCandidate(element) {
+    const isSupported = element.tagName === "CANVAS" || element.tagName === "IMG" && !!element.src;
+    return isSupported && isRendered(element);
+  }
+  class CaptchaFinder {
+    /**
+     * @param {object} deps
+     * @param {import("./SelectorResolver.js").SelectorResolver} deps.resolver
+     * @param {import("./InputFieldFinder.js").InputFieldFinder} deps.inputFinder
+     */
+    constructor({ resolver, inputFinder }) {
+      this.resolver = resolver;
+      this.inputFinder = inputFinder;
+    }
+    /** 页面上所有验证码元素;同一元素被多个选择器命中时只保留一次(按首次命中的顺序) */
+    findElements() {
+      const elements = /* @__PURE__ */ new Set();
+      for (const selector of this.resolver.captchaSelectors()) {
+        if (selector && selector.trim()) {
+          this._query(selector).forEach((element) => elements.add(element));
+        }
+      }
+      return [...elements];
+    }
+    /** 为验证码元素查找输入框 */
+    findInputField(element) {
+      return this.inputFinder.find(element);
+    }
+    /** 验证码元素及其输入框 */
+    locate(element) {
+      return { element, inputField: this.findInputField(element) };
+    }
+    /** @returns {Array<{element: HTMLElement, inputField: HTMLInputElement|null}>} */
+    findAll() {
+      return this.findElements().map((element) => this.locate(element));
+    }
+    /** 元素命中的第一个验证码选择器,仅用于日志排查“为什么把它当成验证码” */
+    matchedSelector(element) {
+      return this.resolver.captchaSelectors().find((selector) => this._matches(element, selector));
+    }
+    _matches(element, selector) {
+      try {
+        return element.matches(selector);
+      } catch (error) {
+        return false;
+      }
+    }
+    _query(selector) {
+      try {
+        return [...document.querySelectorAll(selector)].filter(isCaptchaCandidate);
+      } catch (error) {
+        console.error(`选择器 '${selector}' 执行出错:`, error);
+        return [];
+      }
+    }
+  }
+  class CaptchaProcessor {
+    /**
+     * @param {object} deps
+     * @param {object} deps.settings - 响应式设置对象
+     * @param {import("../utils/DomainBlocklist.js").DomainBlocklist} deps.blocklist
+     * @param {import("../image/ImageConverter.js").ImageConverter} deps.converter
+     * @param {import("../image/CanvasOptimizer.js").CanvasOptimizer} deps.optimizer
+     * @param {import("./CaptchaRecognizer.js").CaptchaRecognizer} deps.recognizer
+     * @param {import("./CaptchaFinder.js").CaptchaFinder} deps.finder
+     * @param {import("./RecognitionIconManager.js").RecognitionIconManager} deps.icons
+     * @param {import("../core/ClipboardService.js").ClipboardService} deps.clipboard
+     * @param {import("../core/ToastService.js").ToastService} deps.toast
+     */
+    constructor(deps) {
+      Object.assign(this, deps);
+    }
+    /**
+     * @param {HTMLElement} element - 验证码元素(img / canvas)
+     * @param {HTMLInputElement|null} inputField - 输入框,为空时会再查找一次
+     * @param {HTMLElement} icon - 识别图标
+     * @param {object} [converted] - 已经转换好的图片结果,提供时跳过转换
+     */
+    async process(element, inputField, icon, converted) {
+      if (this.blocklist.isCurrentDomainBlocked()) {
+        this.toast.show("当前网站已设置为不启用验证码识别功能", "info");
+        return;
+      }
+      try {
+        console.log("[验证码识别] 目标元素:", element, "命中选择器:", this.finder.matchedSelector(element));
+        this.icons.setLoading(icon);
+        const image = converted || this._convert(element);
+        if (!image.success) {
+          this._reportConversionFailure(image.message, icon);
+          return;
+        }
+        const text = await this.recognizer.recognize(image.data);
+        if (!text) {
+          console.error("验证码识别结果为空");
+          this.icons.showResult(icon, false);
+          return;
+        }
+        await this._deliver(text, element, inputField);
+        this.icons.showResult(icon, true);
+      } catch (error) {
+        console.error("验证码识别处理失败：", error);
+        this.icons.showResult(icon, false);
+        this.toast.show("处理验证码失败：" + (error.message || "未知错误"), "error");
+      }
+    }
+    /** canvas 先做图像优化,优化失败时回退为普通转换 */
+    _convert(element) {
+      if (element.tagName === "CANVAS") {
+        const optimized = this.optimizer.optimize(element);
+        if (optimized.success) {
+          return optimized;
+        }
+      }
+      return this.converter.toBase64(element);
+    }
+    _reportConversionFailure(message, icon) {
+      console.error("验证码转换失败：", message);
+      this.toast.show(message, "error");
+      this.icons.showResult(icon, false);
+    }
+    /** 把识别结果交付给用户:填入输入框,并按设置复制到剪贴板 */
+    async _deliver(text, element, inputField) {
+      const field = inputField || this.finder.findInputField(element);
+      if (!field) {
+        console.warn("仍未找到验证码输入框");
+        this.toast.show(`验证码已识别：${text}，但未找到输入框`, "warning");
+        await this._copyIfEnabled(text, `已将验证码复制到剪贴板：${text}`);
+        return;
+      }
+      this._fill(field, text);
+      const copied = await this._copyIfEnabled(text, "已将验证码复制到剪贴板");
+      if (!copied) {
+        this.toast.show(`验证码已识别：${text}`, "success");
+      }
+    }
+    /** 填入并触发 input/change 事件,保证前端表单联动 */
+    _fill(field, text) {
+      field.value = text;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    /**
+     * 开启“自动复制到剪贴板”时复制并提示
+     * @param {string} apiSuccessMessage - 使用 Clipboard API 成功时的提示
+     * @returns {Promise<boolean>} 是否执行了复制
+     */
+    async _copyIfEnabled(text, apiSuccessMessage) {
+      if (!this.settings.copyToClipboard) {
+        return false;
+      }
+      const method = await this.clipboard.copy(text);
+      const message = method === "api" ? apiSuccessMessage : `验证码已识别：${text} (已复制到剪贴板)`;
+      this.toast.show(message, "success");
+      return true;
+    }
+  }
+  class CaptchaRecognizer {
+    /**
+     * @param {object} deps
+     * @param {import("../providers/ProviderRegistry.js").ProviderRegistry} deps.registry
+     * @param {import("./CaptchaTextCleaner.js").CaptchaTextCleaner} deps.cleaner
+     * @param {import("../core/ToastService.js").ToastService} deps.toast
+     * @param {import("../ui/PanelController.js").PanelController} deps.panel
+     */
+    constructor({ registry, cleaner, toast, panel }) {
+      this.registry = registry;
+      this.cleaner = cleaner;
+      this.toast = toast;
+      this.panel = panel;
+    }
+    /**
+     * @param {string} base64Image - 不含 data: 前缀的 PNG base64
+     * @returns {Promise<string>} 识别结果,失败时返回空串
+     */
+    async recognize(base64Image) {
+      if (!this.registry.isConfigured()) {
+        console.error("未配置验证码识别 API");
+        this.toast.show("请先配置验证码识别 API", "error");
+        this.panel.open();
+        return "";
+      }
+      try {
+        this.toast.show("正在识别验证码...", "info");
+        const provider = this.registry.current();
+        const rawText = await provider.recognize(base64Image);
+        const text = this._clean(rawText, provider.meta.label);
+        this._reportResult(text);
+        return text;
+      } catch (error) {
+        console.error("验证码识别失败：", error);
+        this.toast.show("识别失败：" + (error.message || "未知错误"), "error");
+        return "";
+      }
+    }
+    _clean(rawText, providerLabel) {
+      const { basic, refined, text } = this.cleaner.clean(rawText, window.location.hostname);
+      console.log(`${providerLabel}识别结果优化: ${rawText} -> ${basic} -> ${refined}`);
+      return text;
+    }
+    _reportResult(text) {
+      if (text) {
+        this.toast.show(`识别成功：${text}`, "success");
+      } else {
+        console.error("验证码识别结果为空");
+        this.toast.show("识别结果为空", "error");
+      }
+    }
+  }
+  const ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const DIGITS = "0123456789";
+  const BASE_RULE = { allowedChars: ALPHANUMERIC, expectedLength: 4, preferNumbers: false };
+  const SITE_RULES = [
+    ["gov.cn", { allowedChars: DIGITS, preferNumbers: true }],
+    ["edu.cn", {}],
+    ["bank", { expectedLength: 6 }],
+    ["taobao.com", { preferNumbers: true }],
+    ["jd.com", {}],
+    ["weibo.com", {}],
+    ["qq.com", { preferNumbers: true }],
+    ["csdn.net", {}],
+    ["cnblogs.com", {}]
+  ];
+  function getSiteCaptchaRule(hostname) {
+    const hit = SITE_RULES.find(([keyword]) => hostname.includes(keyword));
+    return { ...BASE_RULE, ...hit ? hit[1] : {} };
+  }
+  const THINK_BLOCK = /<(think|thinking)>[\s\S]*?<\/\1>/gi;
+  const UNCLOSED_THINK = /<(?:think|thinking)>[\s\S]*$/i;
+  const COLON = /[:：]/;
+  const QUOTE = '`"“”「」『』';
+  const QUOTED_SEGMENT = new RegExp(`(?:\`+|\\*\\*|[${QUOTE}])([^${QUOTE}*\\n]+)(?:\`+|\\*\\*|[${QUOTE}])`, "g");
+  function stripReasoning(text) {
+    return text.replace(THINK_BLOCK, "").replace(UNCLOSED_THINK, "");
+  }
+  function afterLastColon(text) {
+    const tail = text.split(COLON).pop();
+    return /[a-zA-Z0-9]/.test(tail) ? tail : text;
+  }
+  function lastQuoted(text) {
+    const matches = [...text.matchAll(QUOTED_SEGMENT)];
+    return matches.length > 0 ? matches[matches.length - 1][1] : text;
+  }
+  function extractAnswer(rawText) {
+    return lastQuoted(afterLastColon(stripReasoning(rawText)));
+  }
+  const MIN_VALID_LENGTH = 3;
+  const NUMBER_LOOKALIKES = { O: "0", I: "1", L: "1" };
+  class CaptchaTextCleaner {
+    /**
+     * @param {string} rawText - AI 返回的原始文本
+     * @param {string} hostname - 当前网站域名
+     * @returns {{basic: string, refined: string|null, text: string}}
+     *   basic 是提取出答案并去除非法字符后的结果;refined 应用网站规则后的结果(可能为空);
+     *   text 是最终采用的结果,规则纠错失败时回退到 basic。
+     */
+    clean(rawText, hostname) {
+      const basic = extractAnswer(rawText).replace(/[^a-zA-Z0-9\-]/g, "");
+      const refined = this.applySiteRules(basic, hostname);
+      return { basic, refined, text: refined || basic };
+    }
+    /**
+     * 按网站规则纠错:转大写 -> 过滤非法字符 -> 数字倾向替换。
+     * @returns {string|null} 长度不足时返回 null,表示可能识别不完整
+     */
+    applySiteRules(text, hostname) {
+      if (!text) {
+        return text;
+      }
+      const rule = getSiteCaptchaRule(hostname);
+      let result = text.toUpperCase();
+      if (result.length < MIN_VALID_LENGTH) {
+        return null;
+      }
+      result = result.split("").filter((char) => rule.allowedChars.includes(char)).join("");
+      if (rule.preferNumbers) {
+        result = result.replace(/[OIL]/g, (char) => NUMBER_LOOKALIKES[char]);
+      }
+      if (result.length !== rule.expectedLength) {
+        console.warn(`验证码长度异常: 期望${rule.expectedLength}位，实际${result.length}位`);
+      }
+      return result;
+    }
+  }
+  function collectNewCaptchas(mutations, selector) {
+    const found = [];
+    for (const mutation of mutations) {
+      if (mutation.type === "childList") {
+        mutation.addedNodes.forEach((node) => collectFromNode(node, selector, found));
+      } else if (isCaptchaSrcChange(mutation, selector)) {
+        found.push(mutation.target);
+      }
+    }
+    return found;
+  }
+  function collectFromNode(node, selector, found) {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return;
+    }
+    found.push(...node.querySelectorAll(selector));
+    if (node.matches && node.matches(selector)) {
+      found.push(node);
+    }
+  }
+  function isCaptchaSrcChange(mutation, selector) {
+    return mutation.type === "attributes" && mutation.attributeName === "src" && !!mutation.target.matches && mutation.target.matches(selector);
+  }
+  class CaptchaWatcher {
+    /**
+     * @param {object} deps
+     * @param {object} deps.settings - 响应式设置对象
+     * @param {import("../utils/DomainBlocklist.js").DomainBlocklist} deps.blocklist
+     * @param {import("./SelectorResolver.js").SelectorResolver} deps.resolver
+     * @param {import("./CaptchaFinder.js").CaptchaFinder} deps.finder
+     * @param {import("./RecognitionIconManager.js").RecognitionIconManager} deps.icons
+     * @param {import("../image/ImageConverter.js").ImageConverter} deps.converter
+     * @param {import("./CaptchaProcessor.js").CaptchaProcessor} deps.processor
+     * @param {import("../core/ToastService.js").ToastService} deps.toast
+     */
+    constructor(deps) {
+      Object.assign(this, deps);
+      this.pollTimer = null;
+    }
+    /** 当前网站未被禁用时,在页面加载完成后延迟启动 */
+    start() {
+      if (this.blocklist.isCurrentDomainBlocked()) {
+        return;
+      }
+      const initialize = () => setTimeout(() => this._initialize(), TIMING.INIT_DELAY);
+      if (document.readyState === "complete") {
+        initialize();
+      } else {
+        window.addEventListener("load", initialize);
+      }
+    }
+    _initialize() {
+      try {
+        this._attachIcons();
+        this._observeMutations();
+        this._startPolling();
+        this._handleInitialCaptchas();
+      } catch (error) {
+        console.error("初始化验证码识别功能失败：", error);
+        this.toast.show(`初始化验证码识别功能失败：${error.message || "未知错误"}`, "error");
+      }
+    }
+    /** 为页面上所有验证码添加识别图标 */
+    _attachIcons() {
+      if (this.blocklist.isCurrentDomainBlocked()) {
+        return;
+      }
+      try {
+        this.finder.findAll().forEach((entry) => this._attachIcon(entry));
+      } catch (error) {
+        console.error("添加验证码识别图标时出错：", error);
+      }
+    }
+    _attachIcon({ element, inputField }, options) {
+      return this.icons.attach(
+        element,
+        (icon) => this.processor.process(element, inputField, icon),
+        options
+      );
+    }
+    // ---------- 首次扫描 ----------
+    _handleInitialCaptchas() {
+      const entries = this.finder.findAll();
+      if (entries.length === 0) {
+        return;
+      }
+      const { ready, failed } = this._convertAll(entries);
+      if (failed.length > 0) {
+        this._reportUnrecognizable(failed, "");
+      }
+      if (!this.settings.autoRecognize) {
+        this.toast.show(`检测到 ${entries.length} 个验证码，点击识别图标开始识别`, "info");
+      } else if (ready.length > 0) {
+        this.toast.show(`检测到 ${ready.length} 个可识别的验证码，正在自动识别...`, "info");
+        this._processAll(ready);
+      } else {
+        this._reportNoneRecognizable(entries.length, "");
+      }
+    }
+    // ---------- DOM 变化 ----------
+    _observeMutations() {
+      if (this.blocklist.isCurrentDomainBlocked()) {
+        return;
+      }
+      const observer = new MutationObserver((mutations) => this._onMutations(mutations));
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["src"]
+      });
+    }
+    _onMutations(mutations) {
+      const added = collectNewCaptchas(mutations, this.resolver.observedSelector());
+      if (added.length === 0) {
+        return;
+      }
+      this._attachIcons();
+      if (this.settings.autoRecognize) {
+        setTimeout(() => this._autoRecognizeNew(added), TIMING.AUTO_RECOGNIZE_DELAY);
+      }
+    }
+    _autoRecognizeNew(newElements) {
+      const entries = this.finder.findAll().filter((entry) => newElements.includes(entry.element));
+      const { ready, failed } = this._convertAll(entries);
+      if (failed.length > 0) {
+        this._reportUnrecognizable(failed, "新");
+      }
+      if (ready.length > 0) {
+        this._processAll(ready);
+      } else if (entries.length > 0) {
+        this._reportNoneRecognizable(entries.length, "新");
+      }
+    }
+    // ---------- 定时扫描 ----------
+    _startPolling() {
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer);
+      }
+      this.pollTimer = setInterval(() => this._pollOnce(), TIMING.POLL_INTERVAL);
+    }
+    /** 补充 MutationObserver 覆盖不到的验证码(如仅由云端规则命中的元素) */
+    _pollOnce() {
+      if (this.blocklist.isCurrentDomainBlocked()) {
+        return;
+      }
+      try {
+        const fresh = this._attachNewIcons();
+        if (fresh.length === 0) {
+          return;
+        }
+        this.toast.show(`检测到 ${fresh.length} 个验证码，点击识别图标开始识别`, "info");
+        if (this.settings.autoRecognize) {
+          const { ready } = this._convertAll(fresh);
+          this._processAll(ready);
+        }
+      } catch (error) {
+        console.error("检测验证码时出错：", error);
+      }
+    }
+    /**
+     * 只为还没有图标的验证码添加图标,返回本轮新增的。
+     * NOTE: 旧实现中定时扫描创建的图标点击时不阻止默认行为/冒泡(与其余路径不一致),
+     * 为保持行为不变这里原样保留;是否统一为阻止,留待确认。
+     */
+    _attachNewIcons() {
+      const fresh = [];
+      for (const element of this.finder.findElements()) {
+        if (this.icons.find(element)) {
+          continue;
+        }
+        const entry = this.finder.locate(element);
+        this._attachIcon(entry, { interceptClick: false });
+        fresh.push(entry);
+      }
+      return fresh;
+    }
+    // ---------- 自动识别的公共步骤 ----------
+    /** 逐个转换图片,分为可识别(带转换结果)与不可识别(带原因)两组 */
+    _convertAll(entries) {
+      const ready = [];
+      const failed = [];
+      entries.forEach((entry) => {
+        const converted = this.converter.toBase64(entry.element);
+        if (converted.success) {
+          ready.push({ entry, converted });
+        } else {
+          failed.push(converted.message);
+        }
+      });
+      return { ready, failed };
+    }
+    _processAll(ready) {
+      ready.forEach(({ entry, converted }) => {
+        const icon = this._attachIcon(entry);
+        this.processor.process(entry.element, entry.inputField, icon, converted);
+      });
+    }
+    /** @param {string} wording - 措辞前缀,首次扫描为空,DOM 变化为“新” */
+    _reportUnrecognizable(reasons, wording) {
+      const message = `检测到 ${reasons.length} 个${wording}验证码图片无法识别：${reasons[0]}`;
+      console.warn(message);
+      this.toast.show(message, "error");
+    }
+    _reportNoneRecognizable(total, wording) {
+      const message = `检测到 ${total} 个${wording}验证码，但均无法自动识别`;
+      console.warn(message);
+      this.toast.show(message, "error");
+    }
+  }
+  const NOT_HIDDEN = ':not([type="hidden"])';
+  function looksLikeCaptchaInput(input) {
+    const name2 = (input.name || "").toLowerCase();
+    const id = (input.id || "").toLowerCase();
+    const placeholder = (input.placeholder || "").toLowerCase();
+    return name2.includes("captcha") || name2.includes("verif") || id.includes("captcha") || id.includes("verif") || placeholder.includes("captcha") || placeholder.includes("验证码");
+  }
+  class InputFieldFinder {
+    /**
+     * @param {import("./SelectorResolver.js").SelectorResolver} resolver
+     */
+    constructor(resolver) {
+      this.resolver = resolver;
+    }
+    /**
+     * @param {HTMLElement} captchaElement
+     * @returns {HTMLInputElement|null}
+     */
+    find(captchaElement) {
+      const selectors = this._buildSelectors();
+      const parent = captchaElement.parentElement;
+      return this._queryFirst(parent, selectors) || this._queryFirst(this._closestForm(parent), selectors) || this._queryFirst(document, selectors) || this._guessByAttributes();
+    }
+    /**
+     * 基础与规则选择器都排除 hidden 输入框;规则里的选择器会再原样追加一份,
+     * 这样规则作者显式指向 hidden 输入框时仍然生效。
+     */
+    _buildSelectors() {
+      const ruleSelectors = this.resolver.ruleInputSelectors();
+      const filtered = [...this.resolver.baseInputSelectors(), ...ruleSelectors].map(
+        (selector) => selector.includes(NOT_HIDDEN) ? selector : `${selector}${NOT_HIDDEN}`
+      );
+      return [...filtered, ...ruleSelectors.filter((selector) => !filtered.includes(selector))];
+    }
+    /** 在 root 内按选择器顺序查找,返回第一个命中的输入框 */
+    _queryFirst(root, selectors) {
+      if (!root) {
+        return null;
+      }
+      for (const selector of selectors) {
+        try {
+          const found = root.querySelector(selector);
+          if (found) {
+            return found;
+          }
+        } catch (error) {
+          console.error(`选择器 ${selector} 执行出错:`, error);
+        }
+      }
+      return null;
+    }
+    _closestForm(element) {
+      let node = element;
+      while (node && node.tagName !== "FORM" && node !== document.body) {
+        node = node.parentElement;
+      }
+      return node && node.tagName === "FORM" ? node : null;
+    }
+    /** 最后的兜底:优先带验证码特征的输入框,否则取页面第一个非 hidden 输入框 */
+    _guessByAttributes() {
+      const inputs = [...document.querySelectorAll(`input${NOT_HIDDEN}`)];
+      return inputs.find(looksLikeCaptchaInput) || inputs[0] || null;
+    }
+  }
+  class RecognitionIconManager {
+    /** 验证码元素后面已有的识别图标,没有则返回 null */
+    find(element) {
+      const next = element.nextElementSibling;
+      return next && next.classList.contains(ICON_CLASS.BASE) ? next : null;
+    }
+    /**
+     * 确保验证码元素后面有识别图标;已存在则直接返回,不重复绑定事件
+     * @param {HTMLElement} element - 验证码元素
+     * @param {(icon: HTMLElement) => void} onActivate - 点击图标时的回调
+     * @param {object} [options]
+     * @param {boolean} [options.interceptClick=true] - 是否阻止点击事件的默认行为与冒泡
+     * @returns {HTMLElement} 图标元素
+     */
+    attach(element, onActivate, { interceptClick = true } = {}) {
+      const existing = this.find(element);
+      if (existing) {
+        return existing;
+      }
+      const icon = this._create(onActivate, interceptClick);
+      element.parentNode.insertBefore(icon, element.nextSibling);
+      return icon;
+    }
+    setLoading(icon) {
+      icon.classList.add(ICON_CLASS.LOADING);
+    }
+    /** 结束加载状态,短暂显示成功/失败图标后恢复 */
+    showResult(icon, success) {
+      const resultClass = success ? ICON_CLASS.SUCCESS : ICON_CLASS.ERROR;
+      icon.classList.remove(ICON_CLASS.LOADING);
+      icon.classList.add(resultClass);
+      setTimeout(() => icon.classList.remove(resultClass), TIMING.ICON_RESULT_DURATION);
+    }
+    _create(onActivate, interceptClick) {
+      const icon = document.createElement("div");
+      icon.classList.add(ICON_CLASS.BASE);
+      icon.title = "点击识别验证码";
+      icon.addEventListener("click", (event) => {
+        if (interceptClick) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        onActivate(icon);
+      });
+      return icon;
+    }
+  }
+  const DEFAULT_CAPTCHA_SELECTORS = [
+    'img[src*="captcha"]',
+    'img[src*="verify"]',
+    'img[alt*="验证码"]',
+    'img[title*="验证码"]',
+    'img[alt*="captcha"]',
+    'img[id="captchaPic"]',
+    'img[id*="Captcha"]',
+    ".captchaimage img",
+    ".validate-code img",
+    'img[style="z-index: 2; position: absolute; bottom: -11px; left: 206px; width: 88px; height: 40px;"]',
+    '.authcode img[id="authImage"]',
+    'img[class="verification-img"]',
+    'img[name="imgCaptcha"]'
+  ];
+  const DEFAULT_INPUT_SELECTORS = [
+    'input[name*="captcha"]',
+    'input[name*="verify"]',
+    'input[placeholder="请输入图片验证码"]',
+    'input[id="authcode"]',
+    'input[placeholder*="captcha"]',
+    'input[placeholder*="验证码"]:not([placeholder*="短信"])'
+  ];
+  function escapeRegExp(text) {
+    return text.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  }
+  function wildcardToRegExp(pattern) {
+    return new RegExp(`^${escapeRegExp(pattern).replace(/\*/g, ".*")}$`);
+  }
+  function isRegexLiteral(pattern) {
+    return pattern.startsWith("/") && pattern.endsWith("/");
+  }
+  function testRegexLiteral(pattern, text, errorLabel) {
+    try {
+      return new RegExp(pattern.substring(1, pattern.length - 1)).test(text);
+    } catch (error) {
+      console.error(errorLabel, pattern, error);
+      return false;
+    }
+  }
+  function matchUrlPattern(pattern, url) {
+    if (!pattern || pattern === "*") {
+      return true;
+    }
+    if (isRegexLiteral(pattern)) {
+      return testRegexLiteral(pattern, url, "无效的正则表达式规则：");
+    }
+    if (pattern.includes("*")) {
+      return wildcardToRegExp(pattern).test(url);
+    }
+    return url.includes(pattern);
+  }
+  function appendUnique(list, items) {
+    const result = [...list];
+    items.forEach((item) => {
+      if (!result.includes(item)) {
+        result.push(item);
+      }
+    });
+    return result;
+  }
+  class SelectorResolver {
+    /**
+     * @param {object} deps
+     * @param {object} deps.settings - 响应式设置对象
+     * @param {import("../core/RulesService.js").RulesService} deps.rulesService
+     */
+    constructor({ settings, rulesService }) {
+      this.settings = settings;
+      this.rulesService = rulesService;
+    }
+    /** 内置 + 用户自定义的验证码图片选择器(不含云端规则) */
+    baseCaptchaSelectors() {
+      return [...DEFAULT_CAPTCHA_SELECTORS, ...this._custom(this.settings.customCaptchaSelectors)];
+    }
+    /** 内置 + 用户自定义的输入框选择器(不含云端规则) */
+    baseInputSelectors() {
+      return [...DEFAULT_INPUT_SELECTORS, ...this._custom(this.settings.customInputSelectors)];
+    }
+    /** 完整的验证码图片选择器:基础选择器 + 当前 URL 命中的规则 */
+    captchaSelectors() {
+      return appendUnique(this.baseCaptchaSelectors(), this._ruleSelectors("captcha_image_selector"));
+    }
+    /** 当前 URL 命中的规则中的输入框选择器 */
+    ruleInputSelectors() {
+      return appendUnique([], this._ruleSelectors("captcha_input_selector"));
+    }
+    /** 供 MutationObserver 使用的合并选择器(仅基础选择器) */
+    observedSelector() {
+      return this.baseCaptchaSelectors().join(", ");
+    }
+    _custom(selectors) {
+      return Array.isArray(selectors) ? selectors.filter((selector) => selector && selector.trim()) : [];
+    }
+    /** 当前 URL 命中的规则中,某个字段的非空值 */
+    _ruleSelectors(field) {
+      const rules = this.rulesService.rules;
+      if (!Array.isArray(rules)) {
+        return [];
+      }
+      const url = window.location.href;
+      return rules.filter((rule) => matchUrlPattern(rule.url_pattern, url)).map((rule) => rule[field]).filter(Boolean);
+    }
+  }
+  class ClipboardService {
+    /**
+     * @param {string} text
+     * @returns {Promise<"api"|"fallback">} 实际使用的复制方式
+     */
+    async copy(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return "api";
+      } catch (error) {
+        console.error("使用 Clipboard API 失败，尝试传统方法", error);
+        this._copyByExecCommand(text);
+        return "fallback";
+      }
+    }
+    _copyByExecCommand(text) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.documentElement.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.documentElement.removeChild(textarea);
+    }
+  }
   function bind(fn, thisArg) {
     return function wrap() {
       return fn.apply(thisArg, arguments);
@@ -96,7 +874,7 @@
   const isNumber = typeOfTest("number");
   const isObject = (thing) => thing !== null && typeof thing === "object";
   const isBoolean = (thing) => thing === true || thing === false;
-  const isPlainObject = (val) => {
+  const isPlainObject$1 = (val) => {
     if (kindOf(val) !== "object") {
       return false;
     }
@@ -162,9 +940,9 @@
     const result = {};
     const assignValue = (val, key) => {
       const targetKey = caseless && findKey(result, key) || key;
-      if (isPlainObject(result[targetKey]) && isPlainObject(val)) {
+      if (isPlainObject$1(result[targetKey]) && isPlainObject$1(val)) {
         result[targetKey] = merge(result[targetKey], val);
-      } else if (isPlainObject(val)) {
+      } else if (isPlainObject$1(val)) {
         result[targetKey] = merge({}, val);
       } else if (isArray(val)) {
         result[targetKey] = val.slice();
@@ -378,7 +1156,7 @@
     isNumber,
     isBoolean,
     isObject,
-    isPlainObject,
+    isPlainObject: isPlainObject$1,
     isReadableStream,
     isRequest,
     isResponse,
@@ -1173,9 +1951,9 @@
       return thing instanceof this ? thing : new this(thing);
     }
     static concat(first, ...targets) {
-      const computed = new this(first);
-      targets.forEach((target) => computed.set(target));
-      return computed;
+      const computed2 = new this(first);
+      targets.forEach((target) => computed2.set(target));
+      return computed2;
     }
     static accessor(header) {
       const internals = this[$internals] = this[$internals] = {
@@ -2426,6 +3204,882 @@
   axios.getAdapter = adapters.getAdapter;
   axios.HttpStatusCode = HttpStatusCode;
   axios.default = axios;
+  const MAX_DETAIL_LENGTH = 200;
+  function extractDetail(body) {
+    if (!body) {
+      return "";
+    }
+    if (typeof body === "string") {
+      return body.trim();
+    }
+    const error = body.error ?? body;
+    const detail = typeof error === "string" ? error : error.message || error.msg;
+    return typeof detail === "string" ? detail : "";
+  }
+  function describeHttpError(status, body) {
+    const detail = extractDetail(body).slice(0, MAX_DETAIL_LENGTH);
+    return detail ? `请求失败，状态码: ${status} (${detail})` : `请求失败，状态码: ${status}`;
+  }
+  const UNSAFE_HEADERS = ["Host", "Origin", "Referer", "Cookie"];
+  class HttpClient {
+    /**
+     * @param {object} config
+     * @param {string} [config.method="GET"]
+     * @param {string} config.url
+     * @param {object|string} [config.data] - 请求体,对象会被序列化为 JSON
+     * @param {object} [config.headers]
+     * @param {string} [config.responseType]
+     * @returns {Promise<{data: any}>}
+     */
+    request(config) {
+      if (typeof GM_xmlhttpRequest !== "undefined") {
+        return this._requestByGM(config);
+      }
+      return this._requestByAxios(config);
+    }
+    _requestByGM(config) {
+      return new Promise((resolve, reject) => {
+        GM_xmlhttpRequest({
+          method: config.method || "GET",
+          url: config.url,
+          data: this._serializeBody(config.data),
+          headers: config.headers || {},
+          responseType: config.responseType || "json",
+          onload: (response) => this._onGMLoad(config, response, resolve, reject),
+          onerror: (error) => reject(error)
+        });
+      });
+    }
+    _serializeBody(data) {
+      if (!data) {
+        return void 0;
+      }
+      return typeof data === "string" ? data : JSON.stringify(data);
+    }
+    _onGMLoad(config, response, resolve, reject) {
+      const body = this._parseGMBody(config, response);
+      if (response.status < 200 || response.status >= 300) {
+        reject(new Error(describeHttpError(response.status, body)));
+        return;
+      }
+      resolve({ data: body });
+    }
+    _parseGMBody(config, response) {
+      const raw = response.response || response.responseText;
+      try {
+        const needParse = config.responseType === "json" && typeof response.response === "string";
+        return needParse ? JSON.parse(raw) : raw;
+      } catch (error) {
+        return raw;
+      }
+    }
+    _requestByAxios(config) {
+      const headers = { ...config.headers };
+      UNSAFE_HEADERS.forEach((name2) => delete headers[name2]);
+      return axios({
+        method: config.method || "GET",
+        url: config.url,
+        data: config.data,
+        headers,
+        responseType: config.responseType
+      }).catch((error) => {
+        throw this._toReadableError(error);
+      });
+    }
+    /** 有响应体的失败请求,附上接口返回的错误说明;网络层错误原样抛出 */
+    _toReadableError(error) {
+      const { response } = error;
+      return response ? new Error(describeHttpError(response.status, response.data)) : error;
+    }
+  }
+  class RulesService {
+    /**
+     * @param {object} deps
+     * @param {import("./StorageService.js").StorageService} deps.storage
+     * @param {import("./HttpClient.js").HttpClient} deps.http
+     * @param {object} deps.settings - 响应式设置对象(读取 rulesUrl / autoFetchCloudRules)
+     * @param {import("./ToastService.js").ToastService} deps.toast
+     */
+    constructor({ storage, http, settings, toast }) {
+      this.storage = storage;
+      this.http = http;
+      this.settings = settings;
+      this.toast = toast;
+      this.state = vue.reactive({ rules: [], status: "" });
+    }
+    get rules() {
+      return this.state.rules;
+    }
+    /** 优先使用本地缓存的规则;没有缓存时从远端拉取 */
+    loadCachedOrFetch() {
+      try {
+        const cached = this.storage.getJson(STORAGE_KEYS.RULES);
+        if (cached) {
+          this.state.rules = cached;
+        } else {
+          this.fetchAndSave();
+        }
+      } catch (error) {
+        console.error("加载规则缓存失败：", error);
+      }
+    }
+    /** 从远端拉取规则并写入本地缓存 */
+    async fetchAndSave() {
+      try {
+        this.state.status = "loading";
+        const url = this.settings.rulesUrl || DEFAULT_RULES_URL;
+        const response = await this.http.request({ method: "GET", url, responseType: "json" });
+        if (response && response.data) {
+          this._applyFetched(response.data);
+        } else {
+          this._fail("规则加载失败，请稍后重试");
+        }
+      } catch (error) {
+        console.error("加载规则失败：", error);
+        this._fail("规则加载失败：" + (error.message || "未知错误"));
+      }
+    }
+    /** 开启“每日首次运行时自动获取云端规则”后,每天最多拉取一次 */
+    async fetchDailyIfNeeded() {
+      try {
+        if (!this.settings.autoFetchCloudRules) {
+          return;
+        }
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        if (this.storage.get(STORAGE_KEYS.LAST_CONFIG_UPDATE) === today) {
+          return;
+        }
+        this.toast.show("正在获取最新云端配置...", "info");
+        await this.fetchAndSave();
+        this.storage.set(STORAGE_KEYS.LAST_CONFIG_UPDATE, today);
+        this.toast.show("云端配置更新完成", "success");
+      } catch (error) {
+        console.error("自动获取云端配置失败：", error);
+      }
+    }
+    _applyFetched(rules) {
+      this.storage.setJson(STORAGE_KEYS.RULES, rules);
+      this.state.rules = rules;
+      this.state.status = "success";
+      this.toast.show("规则加载成功！", "success");
+    }
+    _fail(message) {
+      this.state.status = "error";
+      this.toast.show(message, "error");
+    }
+  }
+  const PROVIDER_PRESETS = [
+    {
+      id: "openai",
+      label: "OpenAI",
+      protocol: "openai",
+      keyLabel: "OpenAI API Key:",
+      keyPlaceholder: "sk-...",
+      defaultUrl: "https://api.openai.com/v1/chat/completions",
+      defaultModel: "gpt-4.1-mini",
+      knownModels: ["gpt-4.1-mini", "gpt-4.1", "gpt-4o", "gpt-4o-mini", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"],
+      modelsSource: "api",
+      params: { max_tokens: 300, temperature: 0 },
+      // GPT-5 及之后的模型、o 系列推理模型不接受 max_tokens / temperature
+      modelParams: [{ pattern: "^(gpt-5|gpt-6|o\\d)", params: { max_completion_tokens: 4096 } }]
+    },
+    {
+      id: "anthropic",
+      label: "Anthropic Claude",
+      protocol: "anthropic",
+      keyLabel: "Anthropic API Key:",
+      keyPlaceholder: "sk-ant-...",
+      defaultUrl: "https://api.anthropic.com/v1/messages",
+      defaultModel: "claude-sonnet-5",
+      knownModels: ["claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5", "claude-fable-5-1"],
+      modelsSource: "api",
+      params: {}
+    },
+    {
+      id: "gemini",
+      label: "Google Gemini",
+      protocol: "gemini",
+      keyLabel: "Google Gemini API Key:",
+      keyPlaceholder: "输入Gemini API Key",
+      defaultUrl: "https://generativelanguage.googleapis.com/v1beta/models",
+      defaultModel: "gemini-3.5-flash-lite",
+      knownModels: ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"],
+      modelsSource: "api",
+      params: { generationConfig: { temperature: 0 } },
+      // 官方要求 Gemini 3.x 不要修改 temperature(压低会导致循环、质量下降)
+      modelParams: [{ pattern: "^gemini-3", params: {} }]
+    },
+    {
+      id: "qwen",
+      label: "阿里云通义千问",
+      protocol: "openai",
+      keyLabel: "阿里云通义千问 API Key:",
+      keyPlaceholder: "API Key",
+      defaultUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      defaultModel: "qwen-vl-max-2025-04-02",
+      knownModels: [
+        "qwen3-vl-plus",
+        "qwen3-vl-flash",
+        "qwen-vl-max-2025-04-02",
+        "qwen-vl-max",
+        "qwen-vl-plus",
+        "qwen-vl-max-0809",
+        "qwen-vl-max-0201"
+      ],
+      modelsSource: "static",
+      params: { temperature: 0.1, top_p: 1, stream: false }
+    },
+    {
+      id: "deepseek",
+      label: "DeepSeek",
+      protocol: "openai",
+      keyLabel: "DeepSeek API Key:",
+      keyPlaceholder: "sk-...",
+      defaultUrl: "https://api.deepseek.com/chat/completions",
+      defaultModel: "deepseek-flash",
+      knownModels: ["deepseek-flash"],
+      modelsSource: "api",
+      // 思考模式默认开启,验证码识别用不到,关闭后更快更省
+      params: { thinking: { type: "disabled" } }
+    },
+    {
+      id: "kimi",
+      label: "Kimi (月之暗面)",
+      protocol: "openai",
+      keyLabel: "Kimi API Key:",
+      keyPlaceholder: "sk-...",
+      defaultUrl: "https://api.moonshot.cn/v1/chat/completions",
+      defaultModel: "kimi-k2.6",
+      knownModels: ["kimi-k3", "kimi-k2.6"],
+      modelsSource: "api",
+      urlHint: "国内站与国际站的 Key 互不通用,使用国际站 Key 请改为 https://api.moonshot.ai/v1",
+      params: {}
+    },
+    {
+      id: "zhipu",
+      label: "智谱 GLM",
+      protocol: "openai",
+      keyLabel: "智谱 API Key:",
+      keyPlaceholder: "API Key",
+      defaultUrl: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+      defaultModel: "glm-4.6v-flash",
+      knownModels: ["glm-4.6v-flash", "glm-4.6v-flashx", "glm-4.6v", "glm-5v-turbo"],
+      modelsSource: "static",
+      params: {}
+    },
+    {
+      id: "doubao",
+      label: "豆包 (火山方舟)",
+      protocol: "openai",
+      keyLabel: "火山方舟 API Key:",
+      keyPlaceholder: "API Key",
+      defaultUrl: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+      defaultModel: "doubao-seed-2-0-mini-260428",
+      knownModels: ["doubao-seed-2-0-mini-260428", "doubao-seed-2-0-lite-260215", "doubao-seed-1-6-vision-250815"],
+      modelsSource: "static",
+      modelHint: "也可以填写自建的推理接入点 ID(ep-xxxx)",
+      params: {}
+    },
+    {
+      id: "hunyuan",
+      label: "腾讯混元",
+      protocol: "openai",
+      keyLabel: "腾讯混元 API Key:",
+      keyPlaceholder: "API Key",
+      defaultUrl: "https://api.hunyuan.cloud.tencent.com/v1/chat/completions",
+      defaultModel: "hunyuan-vision",
+      knownModels: ["hunyuan-vision"],
+      modelsSource: "static",
+      params: {}
+    },
+    {
+      id: "qianfan",
+      label: "百度千帆 (文心)",
+      protocol: "openai",
+      keyLabel: "百度千帆 API Key:",
+      keyPlaceholder: "API Key",
+      defaultUrl: "https://qianfan.baidubce.com/v2/chat/completions",
+      defaultModel: "ernie-4.5-vl-28b-a3b",
+      knownModels: ["ernie-4.5-vl-28b-a3b"],
+      modelsSource: "static",
+      params: {}
+    },
+    {
+      id: "xai",
+      label: "xAI Grok",
+      protocol: "openai",
+      keyLabel: "xAI API Key:",
+      keyPlaceholder: "xai-...",
+      defaultUrl: "https://api.x.ai/v1/chat/completions",
+      defaultModel: "grok-4.6",
+      knownModels: ["grok-4.6"],
+      modelsSource: "api",
+      params: {}
+    },
+    {
+      id: "custom",
+      label: "自定义 (OpenAI 兼容)",
+      protocol: "openai",
+      keyLabel: "API Key (可选):",
+      keyPlaceholder: "本地服务可留空",
+      keyRequired: false,
+      defaultUrl: "",
+      urlPlaceholder: "http://localhost:11434/v1/chat/completions",
+      urlHint: "任意兼容 OpenAI 的服务(Ollama、SiliconFlow、OpenRouter、Mistral、Groq、中转站等)。只填到 /v1 也可以,会自动补全",
+      defaultModel: "",
+      knownModels: [],
+      modelsSource: "api",
+      params: {}
+    }
+  ];
+  const PROVIDER_FIELD_SUFFIXES = ["Key", "ApiUrl", "Model", "Prompt", "ExtraParams"];
+  function createProviderFields() {
+    const fields = PROVIDER_PRESETS.flatMap(
+      ({ id }) => PROVIDER_FIELD_SUFFIXES.map((suffix) => [`${id}${suffix}`, ""])
+    );
+    return Object.fromEntries(fields);
+  }
+  function createDefaultSettings() {
+    return {
+      apiType: "openai",
+      ...createProviderFields(),
+      // 功能开关
+      autoRecognize: false,
+      copyToClipboard: true,
+      showNotification: true,
+      autoFetchCloudRules: false,
+      // 提示词模式:simple 简洁版(节省 Token) / detailed 详细版
+      promptType: "simple",
+      // 高级设置
+      customCaptchaSelectors: [],
+      customInputSelectors: [],
+      disabledDomains: "",
+      rulesUrl: DEFAULT_RULES_URL
+    };
+  }
+  class SettingsStore {
+    /**
+     * @param {import("./StorageService.js").StorageService} storage
+     */
+    constructor(storage) {
+      this.storage = storage;
+      this.settings = vue.reactive(createDefaultSettings());
+    }
+    /** 从存储加载,已保存的设置覆盖默认值(新增字段保留默认值) */
+    load() {
+      try {
+        const saved = this.storage.getJson(STORAGE_KEYS.SETTINGS);
+        if (saved) {
+          Object.assign(this.settings, saved);
+        }
+      } catch (error) {
+        console.error("加载设置失败：", error);
+      }
+    }
+    /** 保存到存储,失败时抛出异常由调用方处理 */
+    save() {
+      this.storage.setJson(STORAGE_KEYS.SETTINGS, this.settings);
+    }
+  }
+  class StorageService {
+    get _hasGM() {
+      return typeof GM_getValue !== "undefined" && typeof GM_setValue !== "undefined";
+    }
+    /** 读取原始字符串,不存在时返回假值 */
+    get(key) {
+      return this._hasGM ? GM_getValue(key) : localStorage.getItem(key);
+    }
+    /** 写入原始字符串 */
+    set(key, value) {
+      if (this._hasGM) {
+        GM_setValue(key, value);
+      } else {
+        localStorage.setItem(key, value);
+      }
+    }
+    /** 读取并反序列化 JSON,不存在时返回 null */
+    getJson(key) {
+      const raw = this.get(key);
+      return raw ? JSON.parse(raw) : null;
+    }
+    /** 序列化为 JSON 后写入 */
+    setJson(key, value) {
+      this.set(key, JSON.stringify(value));
+    }
+  }
+  const CONTAINER_ID = "captcha-toast-container";
+  const SHOW_DELAY = 10;
+  const DISPLAY_DURATION = 3e3;
+  const HIDE_ANIMATION_DURATION = 300;
+  class ToastService {
+    /**
+     * @param {object} settings - 响应式设置对象(读取 showNotification)
+     */
+    constructor(settings) {
+      this.settings = settings;
+    }
+    /**
+     * @param {string} message - 提示信息
+     * @param {"info"|"success"|"error"} [type="info"] - 提示类型
+     */
+    show(message, type2 = "info") {
+      if (this.settings.showNotification === false) {
+        return;
+      }
+      const toast = this._createToast(message, type2);
+      this._getContainer().prepend(toast);
+      setTimeout(() => toast.classList.add("captcha-toast-show"), SHOW_DELAY);
+      setTimeout(() => this._dismiss(toast), DISPLAY_DURATION);
+    }
+    _getContainer() {
+      let container = document.getElementById(CONTAINER_ID);
+      if (!container) {
+        container = document.createElement("div");
+        container.id = CONTAINER_ID;
+        document.documentElement.appendChild(container);
+      }
+      return container;
+    }
+    _createToast(message, type2) {
+      const toast = document.createElement("div");
+      toast.className = `captcha-toast captcha-toast-${type2}`;
+      toast.textContent = message;
+      return toast;
+    }
+    _dismiss(toast) {
+      toast.classList.remove("captcha-toast-show");
+      toast.classList.add("captcha-toast-hide");
+      setTimeout(() => toast.remove(), HIDE_ANIMATION_DURATION);
+    }
+  }
+  const MIN_BASE64_LENGTH = 100;
+  const ok = (data) => ({ success: true, data });
+  const fail = (message) => ({ success: false, message });
+  function encodeCanvas(canvas) {
+    const data = canvas.toDataURL("image/png").split(",")[1];
+    return data && data.length >= MIN_BASE64_LENGTH ? data : null;
+  }
+  function luminance(r, g, b) {
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  }
+  function analyzeImageCharacteristics(imageData) {
+    const { colors, brightRatio } = measureColors(imageData.data);
+    return {
+      hasColoredBackground: colors.r > 100 || colors.g > 100 || colors.b > 100,
+      isLightBackground: brightRatio > 0.6,
+      isDarkBackground: brightRatio < 0.4,
+      isGreenish: colors.g > colors.r && colors.g > colors.b,
+      isBlueish: colors.b > colors.r && colors.b > colors.g,
+      isReddish: colors.r > colors.g && colors.r > colors.b,
+      recommendedStrategy: getProcessingStrategy(colors, brightRatio)
+    };
+  }
+  function getProcessingStrategy(colors, brightRatio) {
+    if (colors.g > colors.r && colors.g > colors.b && colors.g > 80) {
+      return "green_background";
+    }
+    if (colors.b > colors.r && colors.b > colors.g && colors.b > 80) {
+      return "blue_background";
+    }
+    if (colors.r > colors.g && colors.r > colors.b && colors.r > 80) {
+      return "red_background";
+    }
+    if (brightRatio > 0.7) {
+      return "light_background";
+    }
+    return brightRatio < 0.3 ? "dark_background" : "standard";
+  }
+  function assessImageQuality(imageData) {
+    const { clarity, contrastSum, edgeCount } = measureSharpness(imageData);
+    const totalPixels = (imageData.width - 2) * (imageData.height - 2);
+    const clarityScore = Math.min(100, clarity / totalPixels / 2);
+    const contrastScore = Math.min(100, contrastSum / totalPixels / 1.28);
+    const edgeScore = Math.min(100, edgeCount / totalPixels * 500);
+    return Math.round((clarityScore + contrastScore + edgeScore) / 3);
+  }
+  function measureColors(data) {
+    let totalPixels = 0;
+    let brightPixels = 0;
+    const sum = { r: 0, g: 0, b: 0 };
+    for (let i = 0; i < data.length; i += 4) {
+      if (luminance(data[i], data[i + 1], data[i + 2]) > 128) {
+        brightPixels++;
+      }
+      totalPixels++;
+      sum.r += data[i];
+      sum.g += data[i + 1];
+      sum.b += data[i + 2];
+    }
+    const divisor = totalPixels / 4;
+    return {
+      colors: { r: sum.r / divisor, g: sum.g / divisor, b: sum.b / divisor },
+      brightRatio: brightPixels / totalPixels
+    };
+  }
+  function measureSharpness({ data, width, height }) {
+    const grayAt = (x, y) => {
+      const idx = (y * width + x) * 4;
+      return luminance(data[idx], data[idx + 1], data[idx + 2]);
+    };
+    let clarity = 0;
+    let contrastSum = 0;
+    let edgeCount = 0;
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const current = grayAt(x, y);
+        const gradientX = Math.abs(current - grayAt(x + 1, y));
+        const gradientY = Math.abs(current - grayAt(x, y + 1));
+        const gradient = Math.sqrt(gradientX * gradientX + gradientY * gradientY);
+        clarity += gradient;
+        contrastSum += Math.abs(current - 128);
+        if (gradient > 30) {
+          edgeCount++;
+        }
+      }
+    }
+    return { clarity, contrastSum, edgeCount };
+  }
+  function removeImageNoise(ctx, width, height) {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const source = imageData.data;
+    const filtered = new Uint8ClampedArray(source);
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        for (let channel = 0; channel < 3; channel++) {
+          filtered[(y * width + x) * 4 + channel] = medianOfNeighbors(source, width, x, y, channel);
+        }
+      }
+    }
+    imageData.data.set(filtered);
+    ctx.putImageData(imageData, 0, 0);
+  }
+  function applyMorphologyOperations(ctx, width, height) {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    const eroded = erode(toBinary(data), width, height);
+    const opened = dilate(eroded, width, height);
+    for (let i = 0; i < opened.length; i++) {
+      const value = opened[i] === 0 ? 0 : 255;
+      data[i * 4] = value;
+      data[i * 4 + 1] = value;
+      data[i * 4 + 2] = value;
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+  function upscaleCanvas(sourceCanvas, qualityScore) {
+    try {
+      const scale = pickScaleFactor(sourceCanvas, qualityScore);
+      const scaled = document.createElement("canvas");
+      scaled.width = sourceCanvas.width * scale;
+      scaled.height = sourceCanvas.height * scale;
+      const ctx = scaled.getContext("2d");
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sourceCanvas, 0, 0, scaled.width, scaled.height);
+      console.log(
+        `图像智能放大: ${sourceCanvas.width}x${sourceCanvas.height} -> ${scaled.width}x${scaled.height} (${scale}x)`
+      );
+      return scaled;
+    } catch (error) {
+      console.error("图像放大失败:", error);
+      return null;
+    }
+  }
+  function pickScaleFactor(canvas, qualityScore) {
+    const minDimension = Math.min(canvas.width, canvas.height);
+    if (minDimension < 30) {
+      return qualityScore < 50 ? 4 : 3;
+    }
+    if (minDimension < 40) {
+      return qualityScore < 60 ? 3 : 2;
+    }
+    return 2;
+  }
+  function medianOfNeighbors(data, width, x, y, channel) {
+    const values = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        values.push(data[((y + dy) * width + (x + dx)) * 4 + channel]);
+      }
+    }
+    values.sort((a, b) => a - b);
+    return values[4];
+  }
+  function toBinary(data) {
+    const binary = new Array(data.length / 4);
+    for (let i = 0; i < data.length; i += 4) {
+      binary[i / 4] = luminance(data[i], data[i + 1], data[i + 2]) < 128 ? 0 : 1;
+    }
+    return binary;
+  }
+  function erode(binary, width, height) {
+    return transformNeighborhood(binary, width, height, (values) => values.every(isForeground));
+  }
+  function dilate(binary, width, height) {
+    return transformNeighborhood(binary, width, height, (values) => values.some(isForeground));
+  }
+  const isForeground = (value) => value === 0;
+  function transformNeighborhood(binary, width, height, becomesForeground) {
+    const result = new Array(width * height).fill(1);
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const neighborhood = [];
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            neighborhood.push(binary[(y + dy) * width + (x + dx)]);
+          }
+        }
+        result[y * width + x] = becomesForeground(neighborhood) ? 0 : 1;
+      }
+    }
+    return result;
+  }
+  const clamp255 = (value) => Math.max(0, Math.min(255, value));
+  const stretch = (value, contrast, threshold) => (value - threshold) * contrast + threshold;
+  function suppressDominantColor(dominant) {
+    return (r, g, b) => {
+      const pixel = [r, g, b];
+      const others = [0, 1, 2].filter((channel) => channel !== dominant);
+      const isDominant = pixel[dominant] > pixel[others[0]] && pixel[dominant] > pixel[others[1]] && pixel[dominant] > 80;
+      return pixel.map((value, channel) => {
+        if (!isDominant) {
+          return Math.min(255, value + 100);
+        }
+        return Math.max(0, value - (channel === dominant ? 150 : 120));
+      });
+    };
+  }
+  function stretchContrast(contrast, threshold) {
+    return (r, g, b) => [r, g, b].map((value) => stretch(value, contrast, threshold));
+  }
+  function standardTransform(r, g, b) {
+    const stretched = stretchContrast(2.5, 128)(r, g, b);
+    const brightness = luminance(r, g, b);
+    if (brightness > 50 && brightness < 200) {
+      return stretched.map((value) => Math.min(255, value * 1.3));
+    }
+    return stretched;
+  }
+  const PIXEL_TRANSFORMS = {
+    green_background: suppressDominantColor(1),
+    blue_background: suppressDominantColor(2),
+    red_background: suppressDominantColor(0),
+    light_background: stretchContrast(3, 140),
+    dark_background: stretchContrast(2, 80),
+    standard: standardTransform
+  };
+  function binarize([r, g, b], threshold) {
+    const brightness = luminance(r, g, b);
+    if (brightness > threshold) {
+      return [255, 255, 255];
+    }
+    return brightness < threshold - 40 ? [0, 0, 0] : [r, g, b];
+  }
+  function enhancePixels(data, strategy) {
+    const transform = PIXEL_TRANSFORMS[strategy] || standardTransform;
+    const threshold = strategy.includes("background") ? 120 : 140;
+    for (let i = 0; i < data.length; i += 4) {
+      const rgb = transform(data[i], data[i + 1], data[i + 2]);
+      const [r, g, b] = binarize(rgb, threshold);
+      data[i] = clamp255(r);
+      data[i + 1] = clamp255(g);
+      data[i + 2] = clamp255(b);
+    }
+  }
+  const MORPHOLOGY_QUALITY_LIMIT = 70;
+  const UPSCALE_MIN_WIDTH = 120;
+  const UPSCALE_MIN_HEIGHT = 40;
+  class CanvasOptimizer {
+    /**
+     * @param {HTMLCanvasElement} canvas
+     * @returns {{success: true, data: string}|{success: false, message: string}}
+     */
+    optimize(canvas) {
+      try {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          return fail("无法获取 Canvas 上下文");
+        }
+        const optimized = this._enhance(canvas, ctx);
+        const data = encodeCanvas(optimized);
+        return data ? ok(data) : fail("优化Canvas数据失败或内容为空");
+      } catch (error) {
+        console.error("优化Canvas图像失败:", error);
+        return fail("优化Canvas图像失败: " + (error.message || "未知错误"));
+      }
+    }
+    /** 完整的优化流水线,返回最终的画布 */
+    _enhance(canvas, ctx) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const analysis = analyzeImageCharacteristics(imageData);
+      const strategy = analysis.recommendedStrategy;
+      const quality = assessImageQuality(imageData);
+      console.log(`图像分析结果: ${strategy}，质量评分: ${quality}`, analysis);
+      enhancePixels(imageData.data, strategy);
+      const result = this._createCanvas(canvas.width, canvas.height);
+      const resultCtx = result.getContext("2d");
+      resultCtx.putImageData(imageData, 0, 0);
+      removeImageNoise(resultCtx, result.width, result.height);
+      if (strategy !== "standard" && quality < MORPHOLOGY_QUALITY_LIMIT) {
+        applyMorphologyOperations(resultCtx, result.width, result.height);
+      }
+      return this._upscaleIfSmall(result, quality);
+    }
+    _createCanvas(width, height) {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    }
+    _upscaleIfSmall(canvas, quality) {
+      if (canvas.width >= UPSCALE_MIN_WIDTH && canvas.height >= UPSCALE_MIN_HEIGHT) {
+        return canvas;
+      }
+      return upscaleCanvas(canvas, quality) || canvas;
+    }
+  }
+  class ImageConverter {
+    /**
+     * @param {HTMLImageElement|HTMLCanvasElement} element
+     */
+    toBase64(element) {
+      try {
+        return element.tagName === "CANVAS" ? this._fromCanvas(element) : this._fromImage(element);
+      } catch (error) {
+        console.error("图片转base64失败:", error);
+        return fail("图片转换失败: " + (error.message || "未知错误"));
+      }
+    }
+    _fromCanvas(canvas) {
+      try {
+        const data = encodeCanvas(canvas);
+        if (!data) {
+          console.error("生成的canvas base64数据无效或过短");
+          return fail("Canvas数据转换失败或内容为空。请刷新验证码后重试。");
+        }
+        return ok(data);
+      } catch (error) {
+        console.error("从Canvas获取数据失败:", error);
+        return fail("无法从Canvas获取数据，可能是跨域限制。" + (error.message || ""));
+      }
+    }
+    _fromImage(img) {
+      if (!img.complete || !img.naturalWidth) {
+        return fail("图片尚未加载完成，请稍后重试");
+      }
+      if (this._reloadForCrossOrigin(img)) {
+        return fail("正在处理跨域图片，请稍后重试");
+      }
+      const canvas = this._drawToCanvas(img);
+      if (!canvas) {
+        return fail("无法读取图片数据，可能是跨域限制。请尝试手动下载验证码图片后识别。");
+      }
+      const data = encodeCanvas(canvas);
+      if (!data) {
+        console.error("生成的base64数据无效或过短");
+        return fail("图片转换失败或内容为空。请刷新验证码后重试。");
+      }
+      return ok(data);
+    }
+    /**
+     * 跨域图片首次遇到时,设置 crossOrigin 并附加时间戳重新加载。
+     * @returns {boolean} 是否触发了重新加载(调用方应稍后重试)
+     */
+    _reloadForCrossOrigin(img) {
+      const src = img.src;
+      const isCrossOrigin = !src.startsWith("data:image") && !this._isSameOrigin(src);
+      if (!isCrossOrigin || img.crossOrigin === "anonymous") {
+        return false;
+      }
+      img.crossOrigin = "anonymous";
+      const separator = src.includes("?") ? "&" : "?";
+      img.src = `${src}${separator}_t=${(/* @__PURE__ */ new Date()).getTime()}`;
+      return true;
+    }
+    /** 把图片绘制到 canvas,跨域污染导致无法读取像素时返回 null */
+    _drawToCanvas(img) {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext("2d");
+      try {
+        ctx.drawImage(img, 0, 0);
+        ctx.getImageData(0, 0, 1, 1);
+        return canvas;
+      } catch (error) {
+        console.error("绘制图片到Canvas失败:", error);
+        return null;
+      }
+    }
+    _isSameOrigin(url) {
+      try {
+        return new URL(url, window.location.origin).origin === window.location.origin;
+      } catch (error) {
+        return false;
+      }
+    }
+  }
+  const TEST_IMAGE_BASE64 = "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";
+  class ProviderConnectionTester {
+    /**
+     * @param {object} deps
+     * @param {import("./ProviderRegistry.js").ProviderRegistry} deps.registry
+     * @param {import("../core/ToastService.js").ToastService} deps.toast
+     */
+    constructor({ registry, toast }) {
+      this.registry = registry;
+      this.toast = toast;
+      const ids = registry.providers.map((provider) => provider.meta.id);
+      this.status = vue.reactive(Object.fromEntries(ids.map((id) => [id, ""])));
+      this.models = vue.reactive(Object.fromEntries(ids.map((id) => [id, []])));
+    }
+    /** 测试指定服务商的连通性,成功后顺带刷新模型列表 */
+    async test(id) {
+      const provider = this.registry.get(id);
+      try {
+        if (!provider.isConfigured()) {
+          this.status[id] = "error";
+        } else {
+          this.status[id] = "loading";
+          await this._probe(provider);
+        }
+      } catch (error) {
+        console.error("API 连接测试失败：", error);
+        this.status[id] = "error";
+      }
+      this._scheduleReset(id);
+    }
+    /** 拉取指定服务商的可用模型列表 */
+    async refreshModels(id) {
+      try {
+        const models = await this.registry.get(id).listModels();
+        this.models[id] = models;
+        this.toast.show(`成功获取 ${models.length} 个可用模型`, "success");
+      } catch (error) {
+        console.error(`获取 ${id} 模型列表失败:`, error);
+        this.toast.show(`获取模型列表失败: ${error.message}`, "error");
+      }
+    }
+    async _probe(provider) {
+      if (await provider.testConnection(TEST_IMAGE_BASE64)) {
+        this.status[provider.meta.id] = "success";
+        this.refreshModels(provider.meta.id);
+      }
+    }
+    _scheduleReset(id) {
+      setTimeout(() => {
+        this.status[id] = "";
+      }, TIMING.STATUS_RESET_DELAY);
+    }
+  }
+  const SIMPLE_PROMPT = `这是一个验证码识别任务，请按以下步骤操作：
+
+首先，专注于图片中颜色最深、最清晰的字符。
+
+其次，从左到右依次识别这些字符。
+
+然后，忽略所有背景中的浅色图案和干扰线。
+
+最后，只输出识别出的字符本身（区分大小写），不要输出任何解释、标点或其它文字。`;
   const DEFAULT_PROMPT = `# Role: 验证码识别专家
 
 ## Profile
@@ -2481,7 +4135,7 @@
 - 步骤 3: 对处理后的图像进行字符分割，然后逐一识别。特别注意图片的左右边缘，确保不遗漏任何字符。
 - 步骤 4: 完整性检查：仔细扫描整个图像区域，确认所有可见字符都已被识别，特别是边缘位置的字符。
 - 步骤 5: 整合识别结果。如果是字符，则按从左到右的顺序完整拼接所有字符；如果是数学题，则执行运算。
-- 步骤 6: 最终验证：确认识别结果的完整性，验证码长度通常为3-8位，检查是否有字符被遗漏。
+- 步骤 6: 最终验证：确认识别结果与图像中可见的字符一一对应，没有遗漏，也没有多出图像中不存在的字符。
 - 步骤 7: 输出最终结果。确保输出内容绝对纯净且完整，符合Rules中的所有规定。
 - 预期结果: 一个完整且不含任何多余信息的字符串（如"aB5fG"、"6627"）或一个数字（如"28"）。
 
@@ -2496,6 +4150,7 @@
 3. 字体较淡或模糊的字符
 4. 与背景色接近的字符
 5. 验证码的完整长度，确保每个位置的字符都被识别
+同时也不要输出图像中并不存在的字符：只输出你确实看到的字符。
 
 ## 彩色背景验证码特殊处理
 🎨 对于彩色背景验证码（如绿色、蓝色、红色背景）：
@@ -2510,2170 +4165,875 @@
 - 4位：最常见（如：A3F9）
 - 5位：较常见（如：8K2P7）
 - 6位：也很常见（如：M4N8Q1）
-- 如果识别结果少于4位，很可能有字符被遗漏！
-
-## 互联网验证码生成规律
-🌐 现代验证码设计特点：
-1. **字符集限制**：多数网站避免使用容易混淆的字符（0与O、1与I、1与l等）
-2. **网站类型规律**：
-   - 政府网站：常用纯数字或简单字母数字组合
-   - 银行网站：通常较复杂，可能包含特殊规则
-   - 电商网站：多为4位数字或字母数字混合
-   - 论坛博客：通常4位字母数字混合，排除混淆字符
-3. **长度规律**：绝大多数为4-6位，其中4位最常见
-4. **大小写规律**：很多验证码不区分大小写或统一为大写
-5. **字符分布**：通常避免连续相同字符，保持一定随机性
-
-## 识别策略建议
-💡 基于网站类型调整识别策略：
-- 如果识别出容易混淆的字符，考虑网站类型进行智能纠正
-- 优先选择符合该网站常见规律的结果
-- 当识别结果明显异常时（如长度过短），加强边缘扫描
-
-记住：宁可多识别也不要少识别，完整性是第一要务！
 
 ## 优秀的提示词示例
 
 🔍 **简洁高效的识别步骤：**
 
-这是一个验证码识别任务，请按以下步骤操作：
-
-首先，专注于图片中颜色最深、最清晰的字符。
-
-其次，从左到右依次识别这些字符。
-
-然后，忽略所有背景中的浅色图案和干扰线。
-
-最后，将识别出的字符组合起来告诉我。`;
-  const SIMPLE_PROMPT = `这是一个验证码识别任务，请按以下步骤操作：
-
-首先，专注于图片中颜色最深、最清晰的字符。
-
-其次，从左到右依次识别这些字符。
-
-然后，忽略所有背景中的浅色图案和干扰线。
-
-最后，将识别出的字符组合起来告诉我。`;
-  function isSameOrigin(url) {
-    try {
-      const currentOrigin = window.location.origin;
-      const urlObj = new URL(url, currentOrigin);
-      return urlObj.origin === currentOrigin;
-    } catch (e) {
-      return false;
-    }
+${SIMPLE_PROMPT}`;
+  function getBasePrompt(promptType) {
+    return promptType === "simple" ? SIMPLE_PROMPT : DEFAULT_PROMPT;
   }
-  function imageToBase64(element) {
-    try {
-      if (element.tagName === "CANVAS") {
-        try {
-          const base64Data2 = element.toDataURL("image/png").split(",")[1];
-          if (!base64Data2 || base64Data2.length < 100) {
-            console.error("生成的canvas base64数据无效或过短");
-            return { success: false, message: "Canvas数据转换失败或内容为空。请刷新验证码后重试。" };
-          }
-          return { success: true, data: base64Data2 };
-        } catch (e) {
-          console.error("从Canvas获取数据失败:", e);
-          return { success: false, message: "无法从Canvas获取数据，可能是跨域限制。" + (e.message || "") };
-        }
-      }
-      const imgSrc = element.src;
-      if (!element.complete || !element.naturalWidth) {
-        return { success: false, message: "图片尚未加载完成，请稍后重试" };
-      }
-      if (!imgSrc.startsWith("data:image") && !isSameOrigin(imgSrc)) {
-        if (element.crossOrigin !== "anonymous") {
-          element.crossOrigin = "anonymous";
-          const timestamp = (/* @__PURE__ */ new Date()).getTime();
-          const separator = imgSrc.includes("?") ? "&" : "?";
-          element.src = `${imgSrc}${separator}_t=${timestamp}`;
-          return { success: false, message: "正在处理跨域图片，请稍后重试" };
-        }
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = element.naturalWidth || element.width;
-      canvas.height = element.naturalHeight || element.height;
-      const ctx = canvas.getContext("2d");
-      try {
-        ctx.drawImage(element, 0, 0);
-        ctx.getImageData(0, 0, 1, 1);
-      } catch (e) {
-        console.error("绘制图片到Canvas失败:", e);
-        return { success: false, message: "无法读取图片数据，可能是跨域限制。请尝试手动下载验证码图片后识别。" };
-      }
-      const base64Data = canvas.toDataURL("image/png").split(",")[1];
-      if (!base64Data || base64Data.length < 100) {
-        console.error("生成的base64数据无效或过短");
-        return { success: false, message: "图片转换失败或内容为空。请刷新验证码后重试。" };
-      }
-      return { success: true, data: base64Data };
-    } catch (error) {
-      console.error("图片转base64失败:", error);
-      return { success: false, message: "图片转换失败: " + (error.message || "未知错误") };
-    }
+  function isPlainObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
   }
-  function preprocessAndConvertImage(imgElement) {
-    try {
-      if (!imgElement.complete || !imgElement.naturalWidth) {
-        return imageToBase64(imgElement);
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = imgElement.naturalWidth || imgElement.width;
-      canvas.height = imgElement.naturalHeight || imgElement.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(imgElement, 0, 0);
-      try {
-        ctx.getImageData(0, 0, 1, 1);
-      } catch {
-        return imageToBase64(imgElement);
-      }
-      const optimized = optimizeCanvasImage(canvas);
-      if (optimized.success) {
-        return optimized;
-      }
-    } catch {
-    }
-    return imageToBase64(imgElement);
-  }
-  function getProcessingStrategy(colors, brightRatio) {
-    if (colors.g > colors.r && colors.g > colors.b && colors.g > 80) {
-      return "green_background";
-    } else if (colors.b > colors.r && colors.b > colors.g && colors.b > 80) {
-      return "blue_background";
-    } else if (colors.r > colors.g && colors.r > colors.b && colors.r > 80) {
-      return "red_background";
-    } else if (brightRatio > 0.7) {
-      return "light_background";
-    } else if (brightRatio < 0.3) {
-      return "dark_background";
-    } else {
-      return "standard";
-    }
-  }
-  function analyzeImageCharacteristics(canvas) {
-    const ctx = canvas.getContext("2d");
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    let totalPixels = 0;
-    let brightPixels = 0;
-    let dominantColors = { r: 0, g: 0, b: 0 };
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-      if (brightness > 128) brightPixels++;
-      totalPixels++;
-      dominantColors.r += r;
-      dominantColors.g += g;
-      dominantColors.b += b;
-    }
-    const pixelCount = totalPixels / 4;
-    dominantColors.r /= pixelCount;
-    dominantColors.g /= pixelCount;
-    dominantColors.b /= pixelCount;
-    const brightRatio = brightPixels / totalPixels;
-    return {
-      hasColoredBackground: dominantColors.r > 100 || dominantColors.g > 100 || dominantColors.b > 100,
-      isLightBackground: brightRatio > 0.6,
-      isDarkBackground: brightRatio < 0.4,
-      isGreenish: dominantColors.g > dominantColors.r && dominantColors.g > dominantColors.b,
-      isBlueish: dominantColors.b > dominantColors.r && dominantColors.b > dominantColors.g,
-      isReddish: dominantColors.r > dominantColors.g && dominantColors.r > dominantColors.b,
-      recommendedStrategy: getProcessingStrategy(dominantColors, brightRatio)
-    };
-  }
-  function removeImageNoise(ctx, width, height) {
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    const newData = new Uint8ClampedArray(data);
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        for (let c = 0; c < 3; c++) {
-          const neighbors = [];
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const idx = ((y + dy) * width + (x + dx)) * 4 + c;
-              neighbors.push(data[idx]);
-            }
-          }
-          neighbors.sort((a, b) => a - b);
-          const currentIdx = (y * width + x) * 4 + c;
-          newData[currentIdx] = neighbors[4];
-        }
-      }
-    }
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = newData[i];
-      data[i + 1] = newData[i + 1];
-      data[i + 2] = newData[i + 2];
-    }
-    ctx.putImageData(imageData, 0, 0);
-  }
-  function morphologyErode(binaryData, width, height) {
-    const result = new Array(width * height).fill(1);
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        const centerIdx = y * width + x;
-        let allForeground = true;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (binaryData[(y + dy) * width + (x + dx)] !== 0) {
-              allForeground = false;
-              break;
-            }
-          }
-          if (!allForeground) break;
-        }
-        result[centerIdx] = allForeground ? 0 : 1;
-      }
+  function deepMerge(base, override) {
+    const result = { ...base };
+    for (const [key, value] of Object.entries(override)) {
+      const canMerge = isPlainObject(value) && isPlainObject(result[key]);
+      result[key] = canMerge ? deepMerge(result[key], value) : value;
     }
     return result;
   }
-  function morphologyDilate(binaryData, width, height) {
-    const result = new Array(width * height).fill(1);
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        const centerIdx = y * width + x;
-        let hasForeground = false;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (binaryData[(y + dy) * width + (x + dx)] === 0) {
-              hasForeground = true;
-              break;
-            }
-          }
-          if (hasForeground) break;
-        }
-        result[centerIdx] = hasForeground ? 0 : 1;
-      }
+  function estimateTokens(text) {
+    if (!text) {
+      return 0;
     }
-    return result;
+    const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const englishWords = text.split(/\s+/).filter((word) => /[a-zA-Z]/.test(word)).length;
+    const numbers = (text.match(/\d+/g) || []).join("").length;
+    const punctuation = (text.match(/[^\w\s\u4e00-\u9fa5]/g) || []).length;
+    return Math.ceil(
+      chineseChars * 2.5 + englishWords * 1.3 + numbers * 0.8 + punctuation * 0.5
+    );
   }
-  function applyMorphologyOperations(ctx, width, height) {
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    const binaryData = new Array(width * height);
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-      binaryData[i / 4] = gray < 128 ? 0 : 1;
+  const EXAMPLE = '{"thinking": {"type": "disabled"}}';
+  function parseJsonObject(text) {
+    const raw = (text || "").trim();
+    if (!raw) {
+      return {};
     }
-    const eroded = morphologyErode(binaryData, width, height);
-    const dilated = morphologyDilate(eroded, width, height);
-    for (let i = 0; i < binaryData.length; i++) {
-      const pixelValue = dilated[i] === 0 ? 0 : 255;
-      const dataIndex = i * 4;
-      data[dataIndex] = pixelValue;
-      data[dataIndex + 1] = pixelValue;
-      data[dataIndex + 2] = pixelValue;
-    }
-    ctx.putImageData(imageData, 0, 0);
-  }
-  function assessImageQuality(canvas) {
-    const ctx = canvas.getContext("2d");
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    let clarity = 0;
-    let contrastSum = 0;
-    let edgeCount = 0;
-    for (let y = 1; y < canvas.height - 1; y++) {
-      for (let x = 1; x < canvas.width - 1; x++) {
-        const currentIdx = (y * canvas.width + x) * 4;
-        const current = data[currentIdx] * 0.299 + data[currentIdx + 1] * 0.587 + data[currentIdx + 2] * 0.114;
-        const rightIdx = (y * canvas.width + (x + 1)) * 4;
-        const bottomIdx = ((y + 1) * canvas.width + x) * 4;
-        const right = data[rightIdx] * 0.299 + data[rightIdx + 1] * 0.587 + data[rightIdx + 2] * 0.114;
-        const bottom = data[bottomIdx] * 0.299 + data[bottomIdx + 1] * 0.587 + data[bottomIdx + 2] * 0.114;
-        const gradientX = Math.abs(current - right);
-        const gradientY = Math.abs(current - bottom);
-        const gradient = Math.sqrt(gradientX * gradientX + gradientY * gradientY);
-        clarity += gradient;
-        if (gradient > 30) edgeCount++;
-        contrastSum += Math.abs(current - 128);
-      }
-    }
-    const totalPixels = (canvas.width - 2) * (canvas.height - 2);
-    const clarityScore = Math.min(100, clarity / totalPixels / 2);
-    const contrastScore = Math.min(100, contrastSum / totalPixels / 1.28);
-    const edgeScore = Math.min(100, edgeCount / totalPixels * 500);
-    return Math.round((clarityScore + contrastScore + edgeScore) / 3);
-  }
-  function intelligentImageUpscale(sourceCanvas, qualityScore) {
+    let parsed;
     try {
-      const minDimension = Math.min(sourceCanvas.width, sourceCanvas.height);
-      let scaleFactor;
-      if (minDimension < 30) {
-        scaleFactor = qualityScore < 50 ? 4 : 3;
-      } else if (minDimension < 40) {
-        scaleFactor = qualityScore < 60 ? 3 : 2;
-      } else {
-        scaleFactor = 2;
-      }
-      const newWidth = sourceCanvas.width * scaleFactor;
-      const newHeight = sourceCanvas.height * scaleFactor;
-      const scaledCanvas = document.createElement("canvas");
-      scaledCanvas.width = newWidth;
-      scaledCanvas.height = newHeight;
-      const scaledCtx = scaledCanvas.getContext("2d");
-      scaledCtx.imageSmoothingEnabled = false;
-      scaledCtx.webkitImageSmoothingEnabled = false;
-      scaledCtx.mozImageSmoothingEnabled = false;
-      scaledCtx.msImageSmoothingEnabled = false;
-      scaledCtx.drawImage(sourceCanvas, 0, 0, newWidth, newHeight);
-      return scaledCanvas;
+      parsed = JSON.parse(raw);
     } catch (error) {
-      console.error("图像放大失败:", error);
-      return null;
+      throw new Error("额外请求参数不是有效的 JSON");
     }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`额外请求参数必须是 JSON 对象，例如 ${EXAMPLE}`);
+    }
+    return parsed;
   }
-  function optimizeCanvasImage(canvasElement) {
-    try {
-      const ctx = canvasElement.getContext("2d");
-      if (!ctx) {
-        return { success: false, message: "无法获取 Canvas 上下文" };
-      }
-      const imageData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
-      const data = imageData.data;
-      const optimizedCanvas = document.createElement("canvas");
-      optimizedCanvas.width = canvasElement.width;
-      optimizedCanvas.height = canvasElement.height;
-      const optimizedCtx = optimizedCanvas.getContext("2d");
-      const imageAnalysis = analyzeImageCharacteristics(canvasElement);
-      const strategy = imageAnalysis.recommendedStrategy;
-      const qualityScore = assessImageQuality(canvasElement);
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-        let newR, newG, newB;
-        switch (strategy) {
-          case "green_background":
-            if (g > r && g > b && g > 80) {
-              newR = Math.max(0, r - 120);
-              newG = Math.max(0, g - 150);
-              newB = Math.max(0, b - 120);
-            } else {
-              newR = Math.min(255, r + 100);
-              newG = Math.min(255, g + 100);
-              newB = Math.min(255, b + 100);
-            }
-            break;
-          case "blue_background":
-            if (b > r && b > g && b > 80) {
-              newR = Math.max(0, r - 120);
-              newG = Math.max(0, g - 120);
-              newB = Math.max(0, b - 150);
-            } else {
-              newR = Math.min(255, r + 100);
-              newG = Math.min(255, g + 100);
-              newB = Math.min(255, b + 100);
-            }
-            break;
-          case "red_background":
-            if (r > g && r > b && r > 80) {
-              newR = Math.max(0, r - 150);
-              newG = Math.max(0, g - 120);
-              newB = Math.max(0, b - 120);
-            } else {
-              newR = Math.min(255, r + 100);
-              newG = Math.min(255, g + 100);
-              newB = Math.min(255, b + 100);
-            }
-            break;
-          case "light_background": {
-            const contrast = 3, threshold = 140;
-            newR = (r - threshold) * contrast + threshold;
-            newG = (g - threshold) * contrast + threshold;
-            newB = (b - threshold) * contrast + threshold;
-            break;
-          }
-          case "dark_background": {
-            const contrast = 2, threshold = 80;
-            newR = (r - threshold) * contrast + threshold;
-            newG = (g - threshold) * contrast + threshold;
-            newB = (b - threshold) * contrast + threshold;
-            break;
-          }
-          default: {
-            const contrast = 2.5, threshold = 128;
-            newR = (r - threshold) * contrast + threshold;
-            newG = (g - threshold) * contrast + threshold;
-            newB = (b - threshold) * contrast + threshold;
-            if (brightness > 50 && brightness < 200) {
-              newR = Math.min(255, newR * 1.3);
-              newG = Math.min(255, newG * 1.3);
-              newB = Math.min(255, newB * 1.3);
-            }
-          }
-        }
-        const finalBrightness = 0.299 * newR + 0.587 * newG + 0.114 * newB;
-        const binaryThreshold = strategy.includes("background") ? 120 : 140;
-        if (finalBrightness > binaryThreshold) {
-          newR = newG = newB = 255;
-        } else if (finalBrightness < binaryThreshold - 40) {
-          newR = newG = newB = 0;
-        }
-        data[i] = Math.max(0, Math.min(255, newR));
-        data[i + 1] = Math.max(0, Math.min(255, newG));
-        data[i + 2] = Math.max(0, Math.min(255, newB));
-      }
-      optimizedCtx.putImageData(imageData, 0, 0);
-      removeImageNoise(optimizedCtx, optimizedCanvas.width, optimizedCanvas.height);
-      if (strategy !== "standard" && qualityScore < 70) {
-        applyMorphologyOperations(optimizedCtx, optimizedCanvas.width, optimizedCanvas.height);
-      }
-      if (optimizedCanvas.width < 120 || optimizedCanvas.height < 40) {
-        const scaledCanvas = intelligentImageUpscale(optimizedCanvas, qualityScore);
-        if (scaledCanvas) {
-          optimizedCanvas.width = scaledCanvas.width;
-          optimizedCanvas.height = scaledCanvas.height;
-          optimizedCtx.clearRect(0, 0, optimizedCanvas.width, optimizedCanvas.height);
-          optimizedCtx.drawImage(scaledCanvas, 0, 0);
-        }
-      }
-      const base64Data = optimizedCanvas.toDataURL("image/png").split(",")[1];
-      if (!base64Data || base64Data.length < 100) {
-        return { success: false, message: "优化Canvas数据失败或内容为空" };
-      }
-      return { success: true, data: base64Data };
-    } catch (error) {
-      console.error("优化Canvas图像失败:", error);
-      return { success: false, message: "优化Canvas图像失败: " + (error.message || "未知错误") };
-    }
+  const TEST_PROMPT = "这是一个验证码图片，请识别其中的字符";
+  const NON_CHAT_MODEL = /embed|whisper|tts|dall-e|moderation|image|audio|realtime|transcri|rerank|davinci|babbage/i;
+  const JSON_HEADERS = { "Content-Type": "application/json" };
+  function isChatModelId(id) {
+    return !NON_CHAT_MODEL.test(id);
   }
-  const _export_sfc = (sfc, props) => {
-    const target = sfc.__vccOpts || sfc;
-    for (const [key, val] of props) {
-      target[key] = val;
+  class BaseProvider {
+    /**
+     * @param {object} deps
+     * @param {import("../core/HttpClient.js").HttpClient} deps.http
+     * @param {object} deps.settings - 响应式设置对象
+     * @param {object} deps.meta - providerPresets.js 中的一项预设
+     */
+    constructor({ http, settings, meta }) {
+      this.http = http;
+      this.settings = settings;
+      this.meta = meta;
     }
-    return target;
-  };
-  const _sfc_main = {
-    data() {
+    /** 读取本服务商的某项设置,field 取 Key / ApiUrl / Model / Prompt / ExtraParams */
+    setting(field) {
+      return this.settings[`${this.meta.id}${field}`];
+    }
+    isConfigured() {
+      if (this.meta.keyRequired === false) {
+        return !!(this.setting("ApiUrl") || this.meta.defaultUrl);
+      }
+      return !!this.setting("Key");
+    }
+    /** 用户选择的模型,留空使用服务商默认模型 */
+    get model() {
+      return this.setting("Model") || this.meta.defaultModel;
+    }
+    /** 用户自定义提示词,留空使用所选模式的默认提示词 */
+    get prompt() {
+      return this.setting("Prompt") || getBasePrompt(this.settings.promptType);
+    }
+    /**
+     * 识别验证码
+     * @param {string} base64Image - 不含 data: 前缀的 PNG base64
+     * @returns {Promise<string>} 模型返回的原始文本,没有内容时返回空串
+     */
+    async recognize(base64Image) {
+      this._assertModelSelected();
+      const prompt = this.prompt;
+      const extraBody = deepMerge(this.recognitionParams(), this.extraParams());
+      const response = await this.http.request(this._post(base64Image, prompt, extraBody));
+      this._logTokenUsage(prompt);
+      return this.extractText(response.data) ?? "";
+    }
+    /**
+     * 测试连接:发送一张固定的验证码图片
+     * @returns {Promise<boolean>} 收到响应即视为连通
+     */
+    async testConnection(base64Image) {
+      this._assertModelSelected();
+      const response = await this.http.request(this._post(base64Image, TEST_PROMPT, this.extraParams()));
+      return !!(response && response.data);
+    }
+    /** 获取可用模型列表,接口没有结果时使用预设里的候选 */
+    async listModels() {
+      if (this.meta.modelsSource === "static") {
+        return this.meta.knownModels;
+      }
+      const ids = await this.fetchModelIdsFromApi();
+      return ids.length > 0 ? ids : this.meta.knownModels;
+    }
+    buildRequest(base64Image, prompt, extraBody = {}) {
       return {
-        packageJson,
-        // 导入的常量
-        DEFAULT_PROMPT,
-        SIMPLE_PROMPT,
-        // API 测试状态
-        apiTestStatus: {
-          openai: "",
-          // 可能的值：'', 'loading', 'success', 'error'
-          gemini: "",
-          // 可能的值：'', 'loading', 'success', 'error'
-          qwen: ""
-          // 可能的值：'', 'loading', 'success', 'error'
-        },
-        // 可用模型列表
-        availableModels: {
-          openai: [],
-          gemini: [],
-          qwen: []
-        },
-        // 是否正在获取模型列表
-        fetchingModels: {
-          openai: false,
-          gemini: false,
-          qwen: false
-        },
-        // 验证码规则配置
-        rules: [],
-        // 规则加载状态
-        rulesLoadStatus: "",
-        // 可能的值：'', 'loading', 'success', 'error'
-        // 设置项
-        settings: {
-          apiType: "openai",
-          // openai, gemini, qwen
-          // OpenAI 设置
-          openaiKey: "",
-          openaiApiUrl: "",
-          openaiModel: "",
-          openaiPrompt: "",
-          // 自定义提示词，留空则使用所选模式的默认提示词
-          // Gemini 设置
-          geminiKey: "",
-          geminiApiUrl: "",
-          geminiModel: "",
-          geminiPrompt: "",
-          // 自定义提示词，留空则使用所选模式的默认提示词
-          // 通义千问设置
-          qwenKey: "",
-          qwenApiUrl: "",
-          qwenModel: "",
-          qwenPrompt: "",
-          // 自定义提示词，留空则使用所选模式的默认提示词
-          // 自动识别设置
-          autoRecognize: false,
-          // 是否启用自动识别
-          // 剪贴板设置
-          copyToClipboard: true,
-          // 是否自动复制到剪贴板
-          // 通知设置
-          showNotification: true,
-          // 是否显示右上角通知，默认开启
-          // 云端规则设置
-          autoFetchCloudRules: false,
-          // 是否每日首次运行时自动获取云端规则，默认关闭
-          // 提示词选择
-          promptType: "simple",
-          // 'detailed' 或 'simple'，默认使用简洁版节省token
-          // 自定义选择器
-          customCaptchaSelectors: [],
-          customInputSelectors: [],
-          // 禁用域名列表
-          disabledDomains: "",
-          // 不启用验证码功能的网站域名列表，支持正则和通配符
-          // 规则 URL
-          rulesUrl: "https://raw.githubusercontent.com/anghunk/UserScript/main/CAPTCHA-automatic-recognition/rules.json"
-          // 规则文件 URL
-        },
-        // 是否显示设置面板
-        showSettings: false,
-        // 当前激活的设置标签页
-        activeSettingTab: "ai",
-        // 配置选项
-        config: {
-          // 验证码图片选择器
-          captchaSelectors: [
-            'img[src*="captcha"]',
-            'img[src*="verifycode"]',
-            'img[src*="verify_code"]',
-            'img[src*="verifyimage"]',
-            'img[src*="checkcode"]',
-            'img[alt*="验证码"]',
-            'img[title*="验证码"]',
-            'img[alt*="captcha"]',
-            'img[id="captchaPic"]',
-            'img[id*="Captcha"]',
-            ".captchaimage img",
-            ".validate-code img",
-            '.authcode img[id="authImage"]',
-            'img[class="verification-img"]',
-            'img[name="imgCaptcha"]'
-          ],
-          // 相关输入框选择器 (通常在验证码图片附近的输入框)
-          inputSelectors: [
-            'input[name*="captcha"]',
-            'input[name*="verify"]',
-            'input[placeholder="请输入图片验证码"]',
-            'input[id="authcode"]',
-            'input[placeholder*="captcha"]',
-            'input[placeholder*="验证码"]:not([placeholder*="短信"])'
-          ]
-        },
-        // 用于在模板中访问环境变量
-        process: {
-          env: {
-            NODE_ENV: "production"
-          }
-        }
+        url: this.endpoint(),
+        data: deepMerge(this.buildBody(base64Image, prompt), extraBody),
+        headers: this.headers()
       };
-    },
-    methods: {
-      /**
-       * 获取 API 类型名称
-       * @param {string} apiType - API 类型
-       * @returns {string} - 名称
-       */
-      storageGet(key) {
-        if (typeof GM_getValue !== "undefined") {
-          return GM_getValue(key);
-        }
-        return localStorage.getItem(key);
-      },
-      storageSet(key, value) {
-        if (typeof GM_setValue !== "undefined") {
-          GM_setValue(key, value);
-        } else {
-          localStorage.setItem(key, value);
-        }
-      },
-      getApiTypeName(apiType) {
-        switch (apiType) {
-          case "openai":
-            return "OpenAI";
-          case "gemini":
-            return "Google Gemini";
-          case "qwen":
-            return "阿里云通义千问";
-          default:
-            return "未知";
-        }
-      },
-      /**
-       * 智能清洗 AI 识别结果
-       * 对数学表达式尝试计算后返回结果，普通字符串去除无关字符
-       */
-      cleanRecognitionResult(rawText) {
-        if (!rawText) return "";
-        const trimmed = rawText.trim();
-        const mathMatch = trimmed.match(/^(\d+)\s*([+\-*/×÷])\s*(\d+)\s*[=＝]?\s*(\d+)?[?？]?$/);
-        if (mathMatch) {
-          const [, a, op, b, explicitAnswer] = mathMatch;
-          if (explicitAnswer) return explicitAnswer;
-          const opMap = { "+": "+", "-": "-", "*": "*", "/": "/", "×": "*", "÷": "/" };
-          try {
-            const result = new Function("return " + Number(a) + opMap[op] + Number(b))();
-            return String(Math.round(result));
-          } catch {
-          }
-        }
-        return trimmed.replace(/[^a-zA-Z0-9]/g, "");
-      },
-      /**
-       * 加载用户设置
-       */
-      loadSettings() {
-        try {
-          const savedSettings = this.storageGet("captchaSettings");
-          if (savedSettings) {
-            const parsedSettings = JSON.parse(savedSettings);
-            this.settings = { ...this.settings, ...parsedSettings };
-          }
-          const savedRules = this.storageGet("captchaRules");
-          if (savedRules) {
-            this.rules = JSON.parse(savedRules);
-          } else {
-            this.loadRules();
-          }
-        } catch (error) {
-          console.error("加载设置失败：", error);
-        }
-      },
-      /**
-       * 加载验证码规则
-       */
-      async loadRules() {
-        try {
-          this.rulesLoadStatus = "loading";
-          let rulesData;
-          const rulesUrl = this.settings.rulesUrl || "https://raw.githubusercontent.com/anghunk/UserScript/main/CAPTCHA-automatic-recognition/rules.json";
-          const response = await this.request({
-            method: "GET",
-            url: rulesUrl,
-            responseType: "json"
-          });
-          if (response && response.data) {
-            rulesData = response.data;
-            this.storageSet("captchaRules", JSON.stringify(rulesData));
-            this.rules = rulesData;
-            this.rulesLoadStatus = "success";
-            this.showToast("规则加载成功！", "success");
-          } else {
-            this.rulesLoadStatus = "error";
-            this.showToast("规则加载失败，请稍后重试", "error");
-          }
-        } catch (error) {
-          console.error("加载规则失败：", error);
-          this.rulesLoadStatus = "error";
-          this.showToast("规则加载失败：" + (error.message || "未知错误"), "error");
-        }
-      },
-      /**
-       * 重新加载验证码规则
-       */
-      async reloadRules() {
-        await this.loadRules();
-      },
-      /**
-       * 显示设置面板
-       */
-      openSettings() {
-        document.body.classList.add("captcha-settings-open");
-        this.showSettings = true;
-      },
-      /**
-       * 关闭设置面板
-       */
-      closeSettings() {
-        document.body.classList.remove("captcha-settings-open");
-        this.showSettings = false;
-      },
-      /**
-       * 保存用户设置
-       */
-      saveSettings() {
-        try {
-          this.storageSet("captchaSettings", JSON.stringify(this.settings));
-          this.closeSettings();
-          this.showToast("设置已保存！", "success");
-        } catch (error) {
-          console.error("保存设置失败：", error);
-          this.showToast("保存设置失败，请查看控制台获取更多信息。", "error");
-        }
-      },
-      /**
-       * 使用 AI 识别验证码
-       * @param {string} base64Image - 验证码图片的 base64 编码
-       * @returns {Promise<string>} - 识别结果
-       */
-      async recognizeCaptcha(base64Image) {
-        if (!this.isApiConfigured()) {
-          console.error("未配置验证码识别 API");
-          this.showToast("请先配置验证码识别 API", "error");
-          this.openSettings();
-          return "";
-        }
-        let result = "";
-        try {
-          this.showToast("正在识别验证码...", "info");
-          switch (this.settings.apiType) {
-            case "openai":
-              result = await this.recognizeWithOpenAI(base64Image);
-              break;
-            case "gemini":
-              result = await this.recognizeWithGemini(base64Image);
-              break;
-            case "qwen":
-              result = await this.recognizeWithQwen(base64Image);
-              break;
-            default:
-              this.showToast(`未知的 API 类型：${this.settings.apiType}`, "error");
-              return "";
-          }
-          if (result) {
-            this.showToast(`识别成功：${result}`, "success");
-          } else {
-            console.error("验证码识别结果为空");
-            this.showToast("识别结果为空", "error");
-          }
-          return result;
-        } catch (error) {
-          console.error("验证码识别失败：", error);
-          this.showToast("识别失败：" + (error.message || "未知错误"), "error");
-          return "";
-        }
-      },
-      /**
-       * 检查 API 是否配置
-       * @param {string} specificType - 指定要检查的 API 类型，不传则检查当前选中的 API
-       * @returns {boolean} - API 是否已配置
-       */
-      isApiConfigured(specificType) {
-        const typeToCheck = specificType || this.settings.apiType;
-        switch (typeToCheck) {
-          case "openai":
-            return !!this.settings.openaiKey;
-          case "gemini":
-            return !!this.settings.geminiKey;
-          case "qwen":
-            return !!this.settings.qwenKey;
-          default:
-            return false;
-        }
-      },
-      /**
-       * 格式化OpenAI API URL，如果只提供了前缀，自动补全'/v1/chat/completions'
-       * @param {string} url - 原始URL
-       * @returns {string} - 格式化后的URL
-       */
-      formatOpenAIUrl(url) {
-        if (!url) {
-          return "https://api.openai.com/v1/chat/completions";
-        }
-        if (!url.endsWith("/v1/chat/completions")) {
-          url = url.replace(/\/+$/, "");
-          url = `${url}/v1/chat/completions`;
-        }
-        return url;
-      },
-      /**
-       * 获取指定 API 类型的提示词
-       */
-      getPromptForApi(apiType) {
-        const basePrompt = this.settings.promptType === "simple" ? SIMPLE_PROMPT : DEFAULT_PROMPT;
-        const customPromptKey = `${apiType}Prompt`;
-        return this.settings[customPromptKey] || basePrompt;
-      },
-      /**
-       * 处理 AI 识别的原始结果：清洗 -> 规则纠错 -> 日志
-       */
-      processRecognitionResult(rawText, prompt, apiName) {
-        const basicCleaned = this.cleanRecognitionResult(rawText);
-        const finalResult = this.applyCaptchaRules(basicCleaned, window.location.hostname);
-        this.estimateTokens(prompt);
-        return finalResult || basicCleaned;
-      },
-      /**
-       * 使用OpenAI API识别验证码
-       */
-      async recognizeWithOpenAI(base64Image) {
-        const apiUrl = this.formatOpenAIUrl(this.settings.openaiApiUrl);
-        const model = this.settings.openaiModel || "gpt-4.1-mini";
-        const prompt = this.getPromptForApi("openai");
-        const response = await this.request({
-          method: "POST",
-          url: apiUrl,
-          data: {
-            model,
-            messages: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: prompt
-                  },
-                  {
-                    type: "image_url",
-                    image_url: {
-                      url: `data:image/png;base64,${base64Image}`
-                    }
-                  }
-                ]
-              }
-            ],
-            max_tokens: 300
-          },
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.settings.openaiKey}`
-          }
-        });
-        const rawContent = response.data.choices[0].message.content.trim();
-        return this.processRecognitionResult(rawContent, prompt, "OpenAI");
-      },
-      /**
-       * 使用Google Gemini API识别验证码
-       */
-      async recognizeWithGemini(base64Image) {
-        const model = this.settings.geminiModel || "gemini-2.5-flash-lite-preview-06-17";
-        const baseApiUrl = this.settings.geminiApiUrl || "https://generativelanguage.googleapis.com/v1beta/models";
-        const apiUrl = `${baseApiUrl}/${model}:generateContent`;
-        const prompt = this.getPromptForApi("gemini");
-        const response = await this.request({
-          method: "POST",
-          url: `${apiUrl}?key=${this.settings.geminiKey}`,
-          data: {
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt
-                  },
-                  {
-                    inline_data: {
-                      mime_type: "image/png",
-                      data: base64Image
-                    }
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0
-            }
-          },
-          headers: {
-            "Content-Type": "application/json"
-          }
-        });
-        if (response.data.candidates && response.data.candidates.length > 0) {
-          const candidate = response.data.candidates[0];
-          if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-            const rawText = candidate.content.parts[0].text || "";
-            return this.processRecognitionResult(rawText, prompt, "Gemini");
-          }
-        }
-        return "";
-      },
-      /**
-       * 使用通义千问 API 识别验证码（新版 API 格式，messages/content 结构）
-       */
-      async recognizeWithQwen(base64Image) {
-        const apiUrl = this.settings.qwenApiUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
-        const model = this.settings.qwenModel || "qwen-vl-max-2025-04-02";
-        const prompt = this.getPromptForApi("qwen");
-        const response = await this.request({
-          method: "POST",
-          url: apiUrl,
-          data: {
-            model,
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: prompt },
-                  {
-                    type: "image_url",
-                    image_url: { url: `data:image/png;base64,${base64Image}` }
-                  }
-                ]
-              }
-            ],
-            temperature: 0.1,
-            top_p: 1,
-            stream: false
-          },
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.settings.qwenKey}`
-          }
-        });
-        if (response.data && response.data.choices && response.data.choices.length > 0) {
-          const rawText = response.data.choices[0].message.content;
-          return this.processRecognitionResult(rawText, prompt, "Qwen");
-        }
-        return "";
-      },
-      /**
-       * 获取合并后的选择器字符串
-       * @param {Array} selectors - 选择器数组
-       * @returns {string} - 合并后的选择器字符串
-       */
-      getCombinedSelector(selectors) {
-        let allSelectors = [...selectors];
-        if (selectors === this.config.captchaSelectors && this.settings.customCaptchaSelectors) {
-          allSelectors = [
-            ...allSelectors,
-            ...this.settings.customCaptchaSelectors.filter((s) => s.trim())
-          ];
-        }
-        if (selectors === this.config.inputSelectors && this.settings.customInputSelectors) {
-          allSelectors = [
-            ...allSelectors,
-            ...this.settings.customInputSelectors.filter((s) => s.trim())
-          ];
-        }
-        return allSelectors.join(", ");
-      },
-      /**
-       * 检测页面上的验证码图片
-       */
-      detectCaptchas() {
-        if (this.captchaCheckInterval) {
-          clearInterval(this.captchaCheckInterval);
-        }
-        this.captchaCheckInterval = setInterval(() => {
-          const currentUrl = window.location.href;
-          if (this.isCurrentDomainDisabled()) {
-            return;
-          }
-          let captchaSelectors = [...this.config.captchaSelectors];
-          if (Array.isArray(this.settings.customCaptchaSelectors)) {
-            captchaSelectors = captchaSelectors.concat(
-              this.settings.customCaptchaSelectors.filter((s) => s && s.trim())
-            );
-          }
-          let inputSelectors = [...this.config.inputSelectors];
-          if (Array.isArray(this.settings.customInputSelectors)) {
-            inputSelectors = inputSelectors.concat(
-              this.settings.customInputSelectors.filter((s) => s && s.trim())
-            );
-          }
-          if (Array.isArray(this.rules) && this.rules.length > 0) {
-            for (const rule of this.rules) {
-              if (!rule.captcha_image_selector) {
-                continue;
-              }
-              let isUrlMatch = false;
-              if (!rule.url_pattern || rule.url_pattern === "*") {
-                isUrlMatch = true;
-              } else if (rule.url_pattern.startsWith("/") && rule.url_pattern.endsWith("/")) {
-                try {
-                  const regexPattern = rule.url_pattern.substring(
-                    1,
-                    rule.url_pattern.length - 1
-                  );
-                  const regex = new RegExp(regexPattern);
-                  isUrlMatch = regex.test(currentUrl);
-                } catch (e) {
-                  console.error("无效的正则表达式规则：", rule.url_pattern, e);
-                }
-              } else if (rule.url_pattern.includes("*")) {
-                const escapedPattern = rule.url_pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-                const regex = new RegExp(`^${escapedPattern}$`);
-                isUrlMatch = regex.test(currentUrl);
-              } else {
-                isUrlMatch = currentUrl.includes(rule.url_pattern);
-              }
-              if (isUrlMatch) {
-                if (rule.captcha_image_selector && !captchaSelectors.includes(rule.captcha_image_selector)) {
-                  captchaSelectors.push(rule.captcha_image_selector);
-                }
-                if (rule.captcha_input_selector && !inputSelectors.includes(rule.captcha_input_selector)) {
-                  inputSelectors.push(rule.captcha_input_selector);
-                }
-              }
-            }
-          }
-          try {
-            let elements = [];
-            captchaSelectors.forEach((selector) => {
-              if (!selector || !selector.trim()) return;
-              try {
-                const captchaImgs = document.querySelectorAll(selector);
-                captchaImgs.forEach((captchaElement) => {
-                  if (!this.isValidCaptchaElement(captchaElement)) {
-                    return;
-                  }
-                  if (captchaElement.nextElementSibling && captchaElement.nextElementSibling.classList.contains(
-                    "captcha-recognition-icon"
-                  )) {
-                    return;
-                  }
-                  let inputField = this.findInputFieldForCaptcha(
-                    captchaElement,
-                    inputSelectors
-                  );
-                  this.addRecognitionIcon(captchaElement, inputField);
-                  elements.push({
-                    captchaImg: captchaElement,
-                    inputField
-                  });
-                });
-              } catch (error) {
-                console.error(`选择器 '${selector}' 执行出错:`, error);
-              }
-            });
-            if (elements.length > 0) {
-              this.showToast(
-                `检测到 ${elements.length} 个验证码，点击识别图标开始识别`,
-                "info"
-              );
-              if (this.settings.autoRecognize) {
-                elements.forEach(({ captchaImg, inputField }) => {
-                  let icon = captchaImg.nextElementSibling;
-                  if (icon && icon.classList.contains("captcha-recognition-icon")) {
-                    const base64Result = imageToBase64(captchaImg);
-                    if (base64Result.success) {
-                      this.processCaptcha(captchaImg, inputField, icon, base64Result);
-                    }
-                  }
-                });
-              }
-            }
-          } catch (error) {
-            console.error("检测验证码时出错：", error);
-          }
-        }, 500);
-      },
-      /**
-       * 计算两个元素之间的距离
-       */
-      getDistance(el1, el2) {
-        const rect1 = el1.getBoundingClientRect();
-        const rect2 = el2.getBoundingClientRect();
-        const x1 = rect1.left + rect1.width / 2;
-        const y1 = rect1.top + rect1.height / 2;
-        const x2 = rect2.left + rect2.width / 2;
-        const y2 = rect2.top + rect2.height / 2;
-        return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
-      },
-      /**
-       * 在验证码图片旁添加识别图标
-       */
-      addIconsToCaptchas() {
-        if (this.isCurrentDomainDisabled()) {
-          return;
-        }
-        try {
-          const elements = this.findCaptchaElements();
-          elements.forEach(({ captchaImg, inputField }) => {
-            const existingIcon = captchaImg.nextElementSibling;
-            if (existingIcon && existingIcon.classList.contains("captcha-recognition-icon")) {
-              return;
-            }
-            const icon = document.createElement("div");
-            icon.classList.add("captcha-recognition-icon");
-            icon.title = "点击识别验证码";
-            if (captchaImg.nextSibling) {
-              captchaImg.parentNode.insertBefore(icon, captchaImg.nextSibling);
-            } else {
-              captchaImg.parentNode.appendChild(icon);
-            }
-            icon.addEventListener("click", async (event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              this.processCaptcha(captchaImg, inputField, icon);
-            });
-          });
-        } catch (error) {
-          console.error("添加验证码识别图标时出错：", error);
-        }
-      },
-      /**
-       * 处理验证码识别
-       * @param {HTMLImageElement} captchaImg - 验证码图片元素
-       * @param {HTMLInputElement} inputField - 输入框元素
-       * @param {HTMLElement} icon - 识别图标元素
-       * @param {Object} checkedBase64 - 可选，已经预先检查过的 base64 结果
-       */
-      async processCaptcha(captchaImg, inputField, icon, checkedBase64) {
-        if (this.isCurrentDomainDisabled()) {
-          this.showToast("当前网站已设置为不启用验证码识别功能", "info");
-          return;
-        }
-        try {
-          icon.classList.add("captcha-recognition-loading");
-          let base64Result;
-          if (checkedBase64) {
-            base64Result = checkedBase64;
-          } else {
-            if (captchaImg.tagName === "CANVAS") {
-              base64Result = optimizeCanvasImage(captchaImg);
-              if (!base64Result.success) {
-                base64Result = imageToBase64(captchaImg);
-              }
-            } else {
-              base64Result = preprocessAndConvertImage(captchaImg);
-            }
-            if (!base64Result.success) {
-              console.error("验证码转换失败：", base64Result.message);
-              this.showToast(base64Result.message, "error");
-              icon.classList.remove("captcha-recognition-loading");
-              icon.classList.add("captcha-recognition-error");
-              setTimeout(() => {
-                icon.classList.remove("captcha-recognition-error");
-              }, 2e3);
-              return;
-            }
-          }
-          const text = await this.recognizeCaptcha(base64Result.data);
-          if (!text) {
-            console.error("验证码识别结果为空");
-            icon.classList.remove("captcha-recognition-loading");
-            icon.classList.add("captcha-recognition-error");
-            setTimeout(() => {
-              icon.classList.remove("captcha-recognition-error");
-            }, 2e3);
-            return;
-          }
-          if (!inputField) {
-            inputField = this.findInputFieldForCaptcha(captchaImg);
-            if (!inputField) {
-              console.warn("仍未找到验证码输入框");
-              this.showToast(`验证码已识别：${text}，但未找到输入框`, "warning");
-              if (this.settings.copyToClipboard) {
-                try {
-                  await navigator.clipboard.writeText(text);
-                  this.showToast(`已将验证码复制到剪贴板：${text}`, "success");
-                } catch (clipboardError) {
-                  console.error("使用 Clipboard API 失败，尝试传统方法", clipboardError);
-                  const textarea = document.createElement("textarea");
-                  textarea.value = text;
-                  textarea.style.position = "fixed";
-                  textarea.style.opacity = "0";
-                  document.documentElement.appendChild(textarea);
-                  textarea.select();
-                  document.execCommand("copy");
-                  document.documentElement.removeChild(textarea);
-                  this.showToast(`验证码已识别：${text} (已复制到剪贴板)`, "success");
-                }
-              }
-              icon.classList.remove("captcha-recognition-loading");
-              icon.classList.add("captcha-recognition-success");
-              setTimeout(() => {
-                icon.classList.remove("captcha-recognition-success");
-              }, 2e3);
-              return;
-            }
-          }
-          inputField.value = text;
-          inputField.dispatchEvent(new Event("input", { bubbles: true }));
-          inputField.dispatchEvent(new Event("change", { bubbles: true }));
-          if (this.settings.copyToClipboard) {
-            try {
-              await navigator.clipboard.writeText(text);
-              this.showToast(`已将验证码复制到剪贴板`, "success");
-            } catch (clipboardError) {
-              console.error("使用 Clipboard API 失败，尝试传统方法", clipboardError);
-              const textarea = document.createElement("textarea");
-              textarea.value = text;
-              textarea.style.position = "fixed";
-              textarea.style.opacity = "0";
-              document.documentElement.appendChild(textarea);
-              textarea.select();
-              document.execCommand("copy");
-              document.documentElement.removeChild(textarea);
-              this.showToast(`验证码已识别：${text} (已复制到剪贴板)`, "success");
-            }
-          } else {
-            this.showToast(`验证码已识别：${text}`, "success");
-          }
-          icon.classList.remove("captcha-recognition-loading");
-          icon.classList.add("captcha-recognition-success");
-          setTimeout(() => {
-            icon.classList.remove("captcha-recognition-success");
-          }, 2e3);
-        } catch (error) {
-          console.error("验证码识别处理失败：", error);
-          icon.classList.remove("captcha-recognition-loading");
-          icon.classList.add("captcha-recognition-error");
-          setTimeout(() => {
-            icon.classList.remove("captcha-recognition-error");
-          }, 2e3);
-          this.showToast("处理验证码失败：" + (error.message || "未知错误"), "error");
-        }
-      },
-      /**
-       * 监听 DOM 变化，自动为新添加的验证码添加识别图标
-       */
-      setupMutationObserver() {
-        if (this.isCurrentDomainDisabled()) {
-          return;
-        }
-        const observer = new MutationObserver((mutations) => {
-          let hasNewCaptcha = false;
-          let newCaptchaElements = [];
-          const captchaSelector = this.getCombinedSelector(this.config.captchaSelectors);
-          mutations.forEach((mutation) => {
-            if (mutation.type === "childList" && mutation.addedNodes.length) {
-              mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                  const captchas = node.querySelectorAll(captchaSelector);
-                  if (captchas.length > 0) {
-                    hasNewCaptcha = true;
-                    captchas.forEach((captcha) => {
-                      newCaptchaElements.push(captcha);
-                    });
-                  }
-                  if (node.matches && node.matches(captchaSelector)) {
-                    hasNewCaptcha = true;
-                    newCaptchaElements.push(node);
-                  }
-                }
-              });
-            }
-            if (mutation.type === "attributes" && mutation.attributeName === "src" && mutation.target.matches && mutation.target.matches(captchaSelector)) {
-              hasNewCaptcha = true;
-              newCaptchaElements.push(mutation.target);
-            }
-          });
-          if (hasNewCaptcha) {
-            this.addIconsToCaptchas();
-            if (this.settings.autoRecognize) {
-              setTimeout(() => {
-                const elements = this.findCaptchaElements();
-                const newElements = elements.filter(
-                  ({ captchaImg }) => newCaptchaElements.includes(captchaImg)
-                );
-                const unrecognizableImages = [];
-                newElements.forEach(({ captchaImg }) => {
-                  const base64Result = imageToBase64(captchaImg);
-                  if (!base64Result.success) {
-                    unrecognizableImages.push({
-                      img: captchaImg,
-                      message: base64Result.message
-                    });
-                  }
-                });
-                if (unrecognizableImages.length > 0) {
-                  this.showToast(
-                    `检测到 ${unrecognizableImages.length} 个新验证码图片无法识别：${unrecognizableImages[0].message}`,
-                    "error"
-                  );
-                }
-                const recognizableElements = newElements.filter(({ captchaImg }) => {
-                  const base64Result = imageToBase64(captchaImg);
-                  return base64Result.success;
-                });
-                if (recognizableElements.length > 0) {
-                  recognizableElements.forEach(({ captchaImg, inputField }) => {
-                    let icon;
-                    const existingIcon = captchaImg.nextElementSibling;
-                    if (existingIcon && existingIcon.classList.contains("captcha-recognition-icon")) {
-                      icon = existingIcon;
-                    } else {
-                      icon = document.createElement("div");
-                      icon.classList.add("captcha-recognition-icon");
-                      if (captchaImg.nextSibling) {
-                        captchaImg.parentNode.insertBefore(icon, captchaImg.nextSibling);
-                      } else {
-                        captchaImg.parentNode.appendChild(icon);
-                      }
-                    }
-                    const base64Result = imageToBase64(captchaImg);
-                    this.processCaptcha(captchaImg, inputField, icon, base64Result);
-                  });
-                } else if (newElements.length > 0) {
-                  this.showToast(
-                    `检测到 ${newElements.length} 个新验证码，但均无法自动识别`,
-                    "error"
-                  );
-                }
-              }, 500);
-            }
-          }
-        });
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          attributeFilter: ["src"]
-          // 只监听 src 属性变化
-        });
-      },
-      /**
-       * 注册油猴菜单
-       */
-      registerMenuCommands() {
-        if (typeof GM_registerMenuCommand !== "undefined") {
-          GM_registerMenuCommand("验证码识别设置", () => {
-            this.openSettings();
-          });
-        }
-      },
-      /**
-       * 初始化插件
-       */
-      init() {
-        this.registerMenuCommands();
-        this.loadSettings();
-        this.checkAndFetchCloudConfig();
-        if (this.isCurrentDomainDisabled()) {
-          return;
-        }
-        const initPlugin = () => {
-          try {
-            this.addIconsToCaptchas();
-            this.setupMutationObserver();
-            this.detectCaptchas();
-            const elements = this.findCaptchaElements();
-            if (elements.length > 0) {
-              const unrecognizableImages = [];
-              elements.forEach(({ captchaImg }) => {
-                const base64Result = imageToBase64(captchaImg);
-                if (!base64Result.success) {
-                  unrecognizableImages.push({
-                    img: captchaImg,
-                    message: base64Result.message
-                  });
-                }
-              });
-              if (unrecognizableImages.length > 0) {
-                console.warn(
-                  `${unrecognizableImages.length} 个验证码图片无法识别：${unrecognizableImages[0].message}`
-                );
-                this.showToast(
-                  `检测到 ${unrecognizableImages.length} 个验证码图片无法识别：${unrecognizableImages[0].message}`,
-                  "error"
-                );
-              }
-              if (this.settings.autoRecognize) {
-                const recognizableElements = elements.filter(({ captchaImg }) => {
-                  const base64Result = imageToBase64(captchaImg);
-                  return base64Result.success;
-                });
-                if (recognizableElements.length > 0) {
-                  this.showToast(
-                    `检测到 ${recognizableElements.length} 个可识别的验证码，正在自动识别...`,
-                    "info"
-                  );
-                  recognizableElements.forEach(({ captchaImg, inputField }) => {
-                    let icon;
-                    const existingIcon = captchaImg.nextElementSibling;
-                    if (existingIcon && existingIcon.classList.contains("captcha-recognition-icon")) {
-                      icon = existingIcon;
-                    } else {
-                      icon = document.createElement("div");
-                      icon.classList.add("captcha-recognition-icon");
-                      if (captchaImg.nextSibling) {
-                        captchaImg.parentNode.insertBefore(icon, captchaImg.nextSibling);
-                      } else {
-                        captchaImg.parentNode.appendChild(icon);
-                      }
-                    }
-                    const base64Result = imageToBase64(captchaImg);
-                    this.processCaptcha(captchaImg, inputField, icon, base64Result);
-                  });
-                } else if (elements.length > 0) {
-                  console.warn(`检测到 ${elements.length} 个验证码，但均无法自动识别`);
-                  this.showToast(
-                    `检测到 ${elements.length} 个验证码，但均无法自动识别`,
-                    "error"
-                  );
-                }
-              } else {
-                this.showToast(
-                  `检测到 ${elements.length} 个验证码，点击识别图标开始识别`,
-                  "info"
-                );
-              }
-            }
-          } catch (error) {
-            console.error("初始化验证码识别功能失败：", error);
-            this.showToast(
-              `初始化验证码识别功能失败：${error.message || "未知错误"}`,
-              "error"
-            );
-          }
-        };
-        if (document.readyState === "complete") {
-          setTimeout(initPlugin, 1e3);
-        } else {
-          window.addEventListener("load", () => {
-            setTimeout(initPlugin, 1e3);
-          });
-        }
-      },
-      /**
-       * 通用请求函数，自动根据环境使用 GM_xmlhttpRequest 或 axios
-       * @param {Object} config - 请求配置
-       * @returns {Promise} - 请求结果
-       */
-      request(config) {
-        if (typeof GM_xmlhttpRequest !== "undefined") {
-          return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-              method: config.method || "GET",
-              url: config.url,
-              data: config.data ? typeof config.data === "string" ? config.data : JSON.stringify(config.data) : void 0,
-              headers: config.headers || {},
-              responseType: config.responseType || "json",
-              onload: (response) => {
-                if (response.status >= 200 && response.status < 300) {
-                  let responseData;
-                  try {
-                    responseData = config.responseType === "json" && typeof response.response === "string" ? JSON.parse(response.response || response.responseText) : response.response || response.responseText;
-                  } catch (e) {
-                    responseData = response.response || response.responseText;
-                  }
-                  resolve({ data: responseData });
-                } else {
-                  reject(new Error(`请求失败，状态码: ${response.status}`));
-                }
-              },
-              onerror: (error) => {
-                reject(error);
-              }
-            });
-          });
-        } else {
-          const safeHeaders = { ...config.headers };
-          const unsafeHeaders = ["Host", "Origin", "Referer", "Cookie"];
-          unsafeHeaders.forEach((header) => {
-            if (safeHeaders[header]) {
-              delete safeHeaders[header];
-            }
-          });
-          return axios({
-            method: config.method || "GET",
-            url: config.url,
-            data: config.data,
-            params: config.params,
-            headers: safeHeaders,
-            responseType: config.responseType
-          });
-        }
-      },
-      /**
-       * 显示 Toast 提示
-       * @param {string} message - 提示信息
-       * @param {string} type - 提示类型 (success, error, info)
-       */
-      showToast(message, type2 = "info") {
-        if (this.settings.showNotification === false) {
-          return;
-        }
-        let toastContainer = document.getElementById("captcha-toast-container");
-        if (!toastContainer) {
-          toastContainer = document.createElement("div");
-          toastContainer.id = "captcha-toast-container";
-          document.documentElement.appendChild(toastContainer);
-        }
-        const toast = document.createElement("div");
-        toast.className = `captcha-toast captcha-toast-${type2}`;
-        toast.textContent = message;
-        if (toastContainer.firstChild) {
-          toastContainer.insertBefore(toast, toastContainer.firstChild);
-        } else {
-          toastContainer.appendChild(toast);
-        }
-        setTimeout(() => {
-          toast.classList.add("captcha-toast-show");
-        }, 10);
-        setTimeout(() => {
-          toast.classList.remove("captcha-toast-show");
-          toast.classList.add("captcha-toast-hide");
-          setTimeout(() => {
-            if (toast.parentNode) {
-              toast.parentNode.removeChild(toast);
-            }
-          }, 300);
-        }, 3e3);
-      },
-      /**
-       * 智能验证码规则推断和纠错
-       * @param {string} rawResult - 原始识别结果
-       * @param {string} domain - 当前网站域名
-       * @returns {string} - 纠错后的结果
-       */
-      applyCaptchaRules(rawResult, domain = "") {
-        if (!rawResult) return rawResult;
-        const siteRules = this.getSiteSpecificRules(domain);
-        let result = siteRules.caseSensitive === false ? rawResult.toUpperCase() : rawResult;
-        if (result.length < 3) {
-          return null;
-        }
-        if (siteRules.allowedChars) {
-          const allowed = siteRules.caseSensitive === false ? siteRules.allowedChars.toUpperCase() : siteRules.allowedChars;
-          result = result.split("").filter((char) => allowed.includes(char)).join("");
-        }
-        if (siteRules.preferNumbers) {
-          result = result.replace(/[OILoil]/g, (match) => {
-            return { "O": "0", "o": "0", "I": "1", "i": "1", "L": "1", "l": "1" }[match] || match;
-          });
-        } else if (siteRules.preferLetters) {
-          result = result.replace(/[015]/g, (match) => {
-            return { "0": "O", "1": "I", "5": "S" }[match] || match;
-          });
-        }
-        if (siteRules.expectedLength && result.length !== siteRules.expectedLength) {
-          console.warn(`验证码长度异常: 期望${siteRules.expectedLength}位，实际${result.length}位`);
-        }
-        return result;
-      },
-      /**
-       * 获取网站特定的验证码规则
-       * @param {string} domain - 网站域名
-       * @returns {Object} - 规则配置
-       */
-      getSiteSpecificRules(domain) {
-        const defaultRules = {
-          allowedChars: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-          expectedLength: 4,
-          preferNumbers: false,
-          preferLetters: false,
-          caseSensitive: false
-        };
-        const rules = {
-          // 政府网站通常使用纯数字或简单字母
-          "gov.cn": { ...defaultRules, preferNumbers: true, allowedChars: "0123456789" },
-          "edu.cn": { ...defaultRules, expectedLength: 4, allowedChars: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" },
-          // 银行网站通常更复杂
-          "bank": { ...defaultRules, expectedLength: 6, caseSensitive: true },
-          // 电商网站
-          "taobao.com": { ...defaultRules, expectedLength: 4, preferNumbers: true },
-          "jd.com": { ...defaultRules, expectedLength: 4 },
-          // 社交媒体
-          "weibo.com": { ...defaultRules, expectedLength: 4 },
-          "qq.com": { ...defaultRules, expectedLength: 4, preferNumbers: true },
-          // 论坛和博客
-          "csdn.net": { ...defaultRules, expectedLength: 4 },
-          "cnblogs.com": { ...defaultRules, expectedLength: 4 },
-          // 默认规则：排除容易混淆的字符
-          default: {
-            ...defaultRules,
-            allowedChars: "23456789ABCDEFGHJKLMNPQRSTUVWXYZ",
-            // 排除0,1,I,O等
-            expectedLength: 4
-          }
-        };
-        for (const [key, rule] of Object.entries(rules)) {
-          if (domain.includes(key)) {
-            return rule;
-          }
-        }
-        return rules.default;
-      },
-      /**
-       * 估算Token消耗量 (粗略估算)
-       * @param {string} text - 要估算的文本
-       * @returns {number} - 估算的token数量
-       */
-      estimateTokens(text) {
-        if (!text) return 0;
-        const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
-        const englishWords = text.split(/\s+/).filter((word) => /[a-zA-Z]/.test(word)).length;
-        const numbers = (text.match(/\d+/g) || []).join("").length;
-        const punctuation = (text.match(/[^\w\s\u4e00-\u9fa5]/g) || []).length;
-        const estimatedTokens = Math.ceil(
-          chineseChars * 2.5 + // 中文字符
-          englishWords * 1.3 + // 英文单词  
-          numbers * 0.8 + // 数字
-          punctuation * 0.5
-          // 标点符号
-        );
-        return estimatedTokens;
-      },
-      /**
-       * 获取可用模型列表
-       * @param {string} apiType - API 类型
-       */
-      async fetchAvailableModels(apiType) {
-        try {
-          this.fetchingModels[apiType] = true;
-          let models = [];
-          if (apiType === "openai") {
-            models = await this.fetchOpenAIModels();
-          } else if (apiType === "gemini") {
-            models = await this.fetchGeminiModels();
-          } else if (apiType === "qwen") {
-            models = await this.fetchQwenModels();
-          }
-          this.availableModels[apiType] = models;
-          this.showToast(`成功获取 ${models.length} 个可用模型`, "success");
-        } catch (error) {
-          console.error(`获取 ${apiType} 模型列表失败:`, error);
-          this.showToast(`获取模型列表失败: ${error.message}`, "error");
-        } finally {
-          this.fetchingModels[apiType] = false;
-        }
-      },
-      /**
-       * 获取 OpenAI 模型列表
-       */
-      async fetchOpenAIModels() {
-        const apiUrl = this.formatOpenAIUrl(this.settings.openaiApiUrl).replace("/chat/completions", "/models");
-        const response = await this.request({
-          method: "GET",
-          url: apiUrl,
-          headers: {
-            "Authorization": `Bearer ${this.settings.openaiKey}`
-          }
-        });
-        if (response && response.data && response.data.data) {
-          const visionModels = response.data.data.filter(
-            (model) => model.id.includes("gpt-4") && (model.id.includes("vision") || model.id.includes("turbo") || model.id.includes("mini"))
-          ).map((model) => model.id).sort();
-          return visionModels.length > 0 ? visionModels : ["gpt-4.1-mini", "gpt-4-vision-preview"];
-        }
-        return ["gpt-4.1-mini", "gpt-4-vision-preview", "gpt-4-turbo"];
-      },
-      /**
-       * 获取 Gemini 模型列表
-       */
-      async fetchGeminiModels() {
-        const baseApiUrl = this.settings.geminiApiUrl || "https://generativelanguage.googleapis.com/v1beta/models";
-        const apiUrl = `${baseApiUrl}?key=${this.settings.geminiKey}`;
-        const response = await this.request({
-          method: "GET",
-          url: apiUrl,
-          headers: {
-            "Content-Type": "application/json"
-          }
-        });
-        if (response && response.data && response.data.models) {
-          const visionModels = response.data.models.filter(
-            (model) => model.name.includes("gemini") && (model.name.includes("flash") || model.name.includes("pro")) && model.supportedGenerationMethods && model.supportedGenerationMethods.includes("generateContent")
-          ).map((model) => model.name.replace("models/", "")).sort();
-          return visionModels.length > 0 ? visionModels : ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
-        }
-        return ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
-      },
-      /**
-       * 获取 Qwen 模型列表
-       */
-      async fetchQwenModels() {
-        const knownModels = [
-          "qwen-vl-max-2025-04-02",
-          "qwen-vl-max",
-          "qwen-vl-plus",
-          "qwen-vl-max-0809",
-          "qwen-vl-max-0201"
-        ];
-        return knownModels;
-      },
-      /**
-       * 构建 API 测试请求配置
-       */
-      buildTestRequestConfig(apiType, testBase64Image) {
-        const testPrompt = "这是一个验证码图片，请识别其中的字符";
-        if (apiType === "openai") {
-          return {
-            method: "POST",
-            url: this.formatOpenAIUrl(this.settings.openaiApiUrl),
-            data: {
-              model: this.settings.openaiModel || "gpt-4.1-mini",
-              messages: [{ role: "user", content: [{ type: "text", text: testPrompt }, { type: "image_url", image_url: { url: `data:image/png;base64,${testBase64Image}` } }] }]
-            },
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.settings.openaiKey}` }
-          };
-        } else if (apiType === "gemini") {
-          const model = this.settings.geminiModel || "gemini-2.5-flash-lite-preview-06-17";
-          const baseApiUrl = this.settings.geminiApiUrl || "https://generativelanguage.googleapis.com/v1beta/models";
-          return {
-            method: "POST",
-            url: `${baseApiUrl}/${model}:generateContent?key=${this.settings.geminiKey}`,
-            data: { contents: [{ parts: [{ text: testPrompt }, { inline_data: { mime_type: "image/png", data: testBase64Image } }] }] },
-            headers: { "Content-Type": "application/json" }
-          };
-        } else if (apiType === "qwen") {
-          return {
-            method: "POST",
-            url: this.settings.qwenApiUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-            data: {
-              model: this.settings.qwenModel || "qwen-vl-max-2025-04-02",
-              messages: [{ role: "user", content: [{ type: "text", text: testPrompt }, { type: "image_url", image_url: { url: `data:image/png;base64,${testBase64Image}` } }] }]
-            },
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.settings.qwenKey}` }
-          };
-        }
-        return null;
-      },
-      /**
-       * 测试 API 连通性
-       */
-      async testApiConnection(apiType) {
-        const resetStatus = () => setTimeout(() => {
-          this.apiTestStatus[apiType] = "";
-        }, 3e3);
-        try {
-          if (!this.isApiConfigured(apiType)) {
-            this.apiTestStatus[apiType] = "error";
-            resetStatus();
-            return;
-          }
-          this.apiTestStatus[apiType] = "loading";
-          const testBase64Image = "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";
-          const requestConfig = this.buildTestRequestConfig(apiType, testBase64Image);
-          if (!requestConfig) return;
-          const response = await this.request(requestConfig);
-          if (response && response.data) {
-            this.apiTestStatus[apiType] = "success";
-            this.fetchAvailableModels(apiType);
-          }
-          resetStatus();
-        } catch (error) {
-          console.error("API 连接测试失败：", error);
-          this.apiTestStatus[apiType] = "error";
-          resetStatus();
-        }
-      },
-      /**
-       * 检查域名是否在禁用列表中
-       * @param {string} domain - 要检查的域名
-       * @returns {boolean} - 如果域名在禁用列表中返回 true，否则返回 false
-       */
-      isDisabledDomain(domain) {
-        if (!this.settings.disabledDomains) {
-          return false;
-        }
-        const disabledDomainsList = this.settings.disabledDomains.split("\n").map((line) => line.trim()).filter((line) => line !== "");
-        for (const disabledDomain of disabledDomainsList) {
-          try {
-            if (disabledDomain.startsWith("/") && disabledDomain.endsWith("/")) {
-              const regexPattern = disabledDomain.substring(1, disabledDomain.length - 1);
-              const regex = new RegExp(regexPattern);
-              if (regex.test(domain)) {
-                return true;
-              }
-            } else if (disabledDomain.includes("*")) {
-              const escapedPattern = disabledDomain.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-              const regex = new RegExp(`^${escapedPattern}$`);
-              if (regex.test(domain)) {
-                return true;
-              }
-            } else if (domain.includes(disabledDomain)) {
-              return true;
-            }
-          } catch (error) {
-            console.error(`检查禁用域名时出错 (${disabledDomain}):`, error);
-          }
-        }
-        return false;
-      },
-      /**
-       * 添加自定义选择器
-       * @param {string} type - 选择器类型，'captcha'或'input'
-       */
-      addSelector(type2) {
-        if (type2 === "captcha") {
-          this.settings.customCaptchaSelectors.push("");
-        } else if (type2 === "input") {
-          this.settings.customInputSelectors.push("");
-        }
-      },
-      /**
-       * 删除自定义选择器
-       * @param {string} type - 选择器类型，'captcha'或'input'
-       * @param {number} index - 要删除的选择器索引
-       */
-      removeSelector(type2, index) {
-        if (type2 === "captcha") {
-          this.settings.customCaptchaSelectors.splice(index, 1);
-        } else if (type2 === "input") {
-          this.settings.customInputSelectors.splice(index, 1);
-        }
-      },
-      /**
-       * 检查当前网站是否在禁用域名列表中
-       * @returns {boolean} - 如果当前网站在禁用列表中，则返回 true
-       */
-      isCurrentDomainDisabled() {
-        if (!this.settings.disabledDomains) {
-          return false;
-        }
-        const currentDomain = window.location.hostname;
-        const disabledDomainsList = this.settings.disabledDomains.split("\n").map((line) => line.trim()).filter((line) => line !== "");
-        for (const domain of disabledDomainsList) {
-          if (domain.startsWith("/") && domain.endsWith("/")) {
-            try {
-              const regexPattern = domain.substring(1, domain.length - 1);
-              const regex = new RegExp(regexPattern);
-              if (regex.test(currentDomain)) {
-                return true;
-              }
-            } catch (e) {
-              console.error("无效的正则表达式：", domain, e);
-            }
-            continue;
-          }
-          if (domain.includes("*")) {
-            const regexPattern = domain.replace(/\./g, "\\.").replace(/\*/g, ".*");
-            try {
-              const regex = new RegExp(`^${regexPattern}$`);
-              if (regex.test(currentDomain)) {
-                return true;
-              }
-            } catch (e) {
-              console.error("无效的通配符模式：", domain, e);
-            }
-            continue;
-          }
-          if (domain === currentDomain) {
-            return true;
-          }
-        }
-        return false;
-      },
-      /**
-       * 为验证码元素 (图片或 canvas) 添加识别图标
-       * @param {HTMLImageElement|HTMLCanvasElement} captchaElement - 验证码元素 (图片或 canvas)
-       * @param {HTMLInputElement} inputField - 输入框元素
-       */
-      addRecognitionIcon(captchaElement, inputField) {
-        const existingIcon = captchaElement.nextElementSibling;
-        if (existingIcon && existingIcon.classList.contains("captcha-recognition-icon")) {
-          return;
-        }
-        const icon = document.createElement("div");
-        icon.classList.add("captcha-recognition-icon");
-        icon.title = "点击识别验证码";
-        if (captchaElement.nextSibling) {
-          captchaElement.parentNode.insertBefore(icon, captchaElement.nextSibling);
-        } else {
-          captchaElement.parentNode.appendChild(icon);
-        }
-        icon.addEventListener("click", async () => {
-          this.processCaptcha(captchaElement, inputField, icon);
-        });
-      },
-      /**
-       * 校验元素是否可能是验证码（尺寸、可见性、宽高比、上下文）
-       * @param {HTMLElement} element
-       * @returns {boolean}
-       */
-      isValidCaptchaElement(element) {
-        if (element.tagName !== "IMG" && element.tagName !== "CANVAS") {
-          return false;
-        }
-        if (element.tagName === "IMG" && !element.src) {
-          return false;
-        }
-        const rect = element.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) {
-          return false;
-        }
-        const style = getComputedStyle(element);
-        if (style.display === "none" || style.visibility === "hidden") {
-          return false;
-        }
-        if (rect.width < 40 || rect.width > 400 || rect.height < 15 || rect.height > 150) {
-          return false;
-        }
-        return this.getCaptchaConfidence(element) >= 2;
-      },
-      /**
-       * 评估元素是验证码的置信度得分
-       * @param {HTMLElement} element
-       * @returns {number} 得分越高越可能是验证码
-       */
-      getCaptchaConfidence(element) {
-        let score = 0;
-        const rect = element.getBoundingClientRect();
-        const ratio = rect.width / rect.height;
-        if (ratio >= 1.5 && ratio <= 6) score += 2;
-        if (rect.width >= 60 && rect.width <= 250 && rect.height >= 20 && rect.height <= 80) {
-          score += 2;
-        }
-        if (element.closest("form")) score += 2;
-        const parent = element.parentElement;
-        if (parent && parent.querySelector('input:not([type="hidden"])')) {
-          score += 2;
-        }
-        const attrs = [
-          element.src || "",
-          element.alt || "",
-          element.title || "",
-          element.id || "",
-          element.className || "",
-          element.name || ""
-        ].join(" ").toLowerCase();
-        if (/captcha|verify|验证码|authcode|checkcode|vcode/.test(attrs)) {
-          score += 3;
-        }
-        return score;
-      },
-      /**
-       * 查找页面上的验证码图片和相关输入框
-       * @returns {Array} - 包含验证码图片和相关输入框的对象数组
-       */
-      findCaptchaElements() {
-        let captchaSelectors = [...this.config.captchaSelectors];
-        if (Array.isArray(this.settings.customCaptchaSelectors)) {
-          captchaSelectors = captchaSelectors.concat(
-            this.settings.customCaptchaSelectors.filter((s) => s && s.trim())
-          );
-        }
-        let inputSelectors = [...this.config.inputSelectors];
-        if (Array.isArray(this.settings.customInputSelectors)) {
-          inputSelectors = inputSelectors.concat(
-            this.settings.customInputSelectors.filter((s) => s && s.trim())
-          );
-        }
-        const currentUrl = window.location.href;
-        if (Array.isArray(this.rules) && this.rules.length > 0) {
-          for (const rule of this.rules) {
-            if (!rule.captcha_image_selector) {
-              continue;
-            }
-            let isUrlMatch = false;
-            if (!rule.url_pattern || rule.url_pattern === "*") {
-              isUrlMatch = true;
-            } else if (rule.url_pattern.startsWith("/") && rule.url_pattern.endsWith("/")) {
-              try {
-                const regexPattern = rule.url_pattern.substring(
-                  1,
-                  rule.url_pattern.length - 1
-                );
-                const regex = new RegExp(regexPattern);
-                isUrlMatch = regex.test(currentUrl);
-              } catch (e) {
-                console.error("无效的正则表达式规则：", rule.url_pattern, e);
-              }
-            } else if (rule.url_pattern.includes("*")) {
-              const escapedPattern = rule.url_pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-              const regex = new RegExp(`^${escapedPattern}$`);
-              isUrlMatch = regex.test(currentUrl);
-            } else {
-              isUrlMatch = currentUrl.includes(rule.url_pattern);
-            }
-            if (isUrlMatch) {
-              if (rule.captcha_image_selector && !captchaSelectors.includes(rule.captcha_image_selector)) {
-                captchaSelectors.push(rule.captcha_image_selector);
-              }
-              if (rule.captcha_input_selector && !inputSelectors.includes(rule.captcha_input_selector)) {
-                inputSelectors.push(rule.captcha_input_selector);
-              }
-            }
-          }
-        }
-        const elements = [];
-        captchaSelectors.forEach((selector) => {
-          if (!selector || !selector.trim()) return;
-          try {
-            const captchaImgs = document.querySelectorAll(selector);
-            captchaImgs.forEach((captchaElement) => {
-              if (!this.isValidCaptchaElement(captchaElement)) {
-                return;
-              }
-              if (elements.some(({ captchaImg }) => captchaImg === captchaElement)) {
-                return;
-              }
-              let inputField = this.findInputFieldForCaptcha(captchaElement, inputSelectors);
-              elements.push({
-                captchaImg: captchaElement,
-                inputField
-              });
-            });
-          } catch (error) {
-            console.error(`选择器 '${selector}' 执行出错:`, error);
-          }
-        });
-        return elements;
-      },
-      /**
-       * 为验证码图片查找对应的输入框
-       * @param {HTMLImageElement} captchaImg - 验证码图片元素
-       * @param {Array} [customSelectors] - 自定义输入框选择器列表，可选
-       * @returns {HTMLInputElement|null} - 找到的输入框元素，或 null
-       */
-      findInputFieldForCaptcha(captchaImg, customSelectors) {
-        const baseFilter = ':not([type="hidden"])';
-        let inputSelectors = customSelectors || [...this.config.inputSelectors];
-        inputSelectors = inputSelectors.map((selector) => {
-          if (selector.includes(':not([type="hidden"])')) {
-            return selector;
-          }
-          return `${selector}${baseFilter}`;
-        });
-        if (!customSelectors && Array.isArray(this.settings.customInputSelectors)) {
-          const filteredCustomSelectors = this.settings.customInputSelectors.map((selector) => {
-            if (!selector) return "";
-            if (selector.includes(':not([type="hidden"])')) {
-              return selector;
-            }
-            return `${selector}${baseFilter}`;
-          });
-          inputSelectors = inputSelectors.concat(filteredCustomSelectors.filter((s) => s));
-        }
-        const currentUrl = window.location.href;
-        if (Array.isArray(this.rules) && this.rules.length > 0) {
-          for (const rule of this.rules) {
-            if (!rule.captcha_input_selector) {
-              continue;
-            }
-            let isUrlMatch = false;
-            if (!rule.url_pattern || rule.url_pattern === "*") {
-              isUrlMatch = true;
-            } else if (rule.url_pattern.startsWith("/") && rule.url_pattern.endsWith("/")) {
-              try {
-                const regexPattern = rule.url_pattern.substring(
-                  1,
-                  rule.url_pattern.length - 1
-                );
-                const regex = new RegExp(regexPattern);
-                isUrlMatch = regex.test(currentUrl);
-              } catch (e) {
-                console.error("Invalid regex pattern:", rule.url_pattern);
-              }
-            } else if (rule.url_pattern.includes("*")) {
-              const escapedPattern = rule.url_pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-              const regex = new RegExp(`^${escapedPattern}$`);
-              isUrlMatch = regex.test(currentUrl);
-            } else {
-              isUrlMatch = currentUrl.includes(rule.url_pattern);
-            }
-            if (isUrlMatch && rule.captcha_input_selector && !inputSelectors.includes(rule.captcha_input_selector)) {
-              inputSelectors.push(rule.captcha_input_selector);
-            }
-          }
-        }
-        let inputField = null;
-        const parentElement = captchaImg.parentElement;
-        if (parentElement) {
-          for (const selector of inputSelectors) {
-            try {
-              const inputs = parentElement.querySelectorAll(selector);
-              if (inputs.length > 0) {
-                inputField = inputs[0];
-                break;
-              }
-            } catch (e) {
-              console.error(`选择器 ${selector} 执行出错:`, e);
-            }
-          }
-        }
-        if (!inputField && parentElement) {
-          let form = parentElement;
-          while (form && form.tagName !== "FORM" && form !== document.body) {
-            form = form.parentElement;
-          }
-          if (form && form.tagName === "FORM") {
-            for (const selector of inputSelectors) {
-              try {
-                const inputs = form.querySelectorAll(selector);
-                if (inputs.length > 0) {
-                  inputField = inputs[0];
-                  break;
-                }
-              } catch (e) {
-                console.error(`选择器 ${selector} 执行出错:`, e);
-              }
-            }
-          }
-        }
-        if (!inputField) {
-          for (const selector of inputSelectors) {
-            try {
-              const inputs = document.querySelectorAll(selector);
-              if (inputs.length > 0) {
-                inputField = inputs[0];
-                break;
-              }
-            } catch (e) {
-              console.error(`选择器 ${selector} 执行出错:`, e);
-            }
-          }
-        }
-        if (!inputField) {
-          const inputs = document.querySelectorAll('input:not([type="hidden"])');
-          if (inputs.length > 0) {
-            for (const input of inputs) {
-              const name2 = input.name ? input.name.toLowerCase() : "";
-              const id = input.id ? input.id.toLowerCase() : "";
-              const placeholder = input.placeholder ? input.placeholder.toLowerCase() : "";
-              if (name2.includes("captcha") || name2.includes("verif") || id.includes("captcha") || id.includes("verif") || placeholder.includes("captcha") || placeholder.includes("验证码")) {
-                inputField = input;
-                break;
-              }
-            }
-          }
-        }
-        return inputField;
-      },
-      /**
-       * 检查并自动获取云端配置（每天首次使用）
-       */
-      async checkAndFetchCloudConfig() {
-        try {
-          if (!this.settings.autoFetchCloudRules) {
-            return;
-          }
-          const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-          const lastConfigUpdate = this.storageGet("lastConfigUpdate");
-          if (!lastConfigUpdate || lastConfigUpdate !== today) {
-            this.showToast("正在获取最新云端配置...", "info");
-            await this.loadRules();
-            this.storageSet("lastConfigUpdate", today);
-            this.showToast("云端配置更新完成", "success");
-          }
-        } catch (error) {
-          console.error("自动获取云端配置失败：", error);
-        }
+    }
+    /** 仅识别请求附带的模型参数:命中 modelParams 的模型用其参数,否则用 params */
+    recognitionParams() {
+      const { params = {}, modelParams = [] } = this.meta;
+      const matched = modelParams.find(({ pattern }) => new RegExp(pattern, "i").test(this.model));
+      return matched ? matched.params : params;
+    }
+    /** 用户在设置里填写的额外请求参数(JSON 对象),合并进请求体 */
+    extraParams() {
+      return parseJsonObject(this.setting("ExtraParams"));
+    }
+    /** 请求 `{ data: [{ id }] }` 结构的模型列表接口(OpenAI、Anthropic 通用) */
+    async _requestModelIds(url, headers) {
+      var _a;
+      const response = await this.http.request({ method: "GET", url, headers });
+      const models = (_a = response == null ? void 0 : response.data) == null ? void 0 : _a.data;
+      if (!Array.isArray(models)) {
+        return [];
       }
-    },
-    mounted() {
-      try {
-        this.init();
-      } catch (error) {
-        console.error("验证码识别插件挂载失败：", error);
+      return models.map((model) => model.id).filter(isChatModelId).sort();
+    }
+    _post(base64Image, prompt, extraBody) {
+      return { method: "POST", ...this.buildRequest(base64Image, prompt, extraBody) };
+    }
+    _assertModelSelected() {
+      if (!this.model) {
+        throw new Error("请先填写模型名称");
       }
-    },
-    created() {
-      try {
-        const siteCompatRules = [
+    }
+    _logTokenUsage(prompt) {
+      const mode = this.settings.promptType === "simple" ? "简洁版" : "详细版";
+      console.log(`📊 提示词Token消耗估算: ~${estimateTokens(prompt)} tokens (${mode})`);
+    }
+  }
+  const hasText = (block) => typeof (block == null ? void 0 : block.text) === "string";
+  function joinTextBlocks(content, isTextBlock = hasText) {
+    if (typeof content === "string") {
+      return content;
+    }
+    if (!Array.isArray(content)) {
+      return void 0;
+    }
+    return content.filter(isTextBlock).map((block) => block.text).join("");
+  }
+  const VERSION_SEGMENT = /\/v\d+$/;
+  function normalizeEndpoint(url, suffix) {
+    const trimmed = url.trim().replace(/\/+$/, "");
+    if (trimmed.endsWith(suffix)) {
+      return trimmed;
+    }
+    return VERSION_SEGMENT.test(trimmed) ? `${trimmed}${suffix}` : `${trimmed}/v1${suffix}`;
+  }
+  const MESSAGES_SUFFIX = "/messages";
+  const API_VERSION = "2023-06-01";
+  const MAX_TOKENS = 1024;
+  class AnthropicProvider extends BaseProvider {
+    endpoint() {
+      return normalizeEndpoint(this.setting("ApiUrl") || this.meta.defaultUrl, MESSAGES_SUFFIX);
+    }
+    headers() {
+      return {
+        ...JSON_HEADERS,
+        "x-api-key": this.setting("Key"),
+        "anthropic-version": API_VERSION,
+        // 非油猴环境(回退到浏览器请求)时,Anthropic 要求显式声明允许浏览器直连
+        "anthropic-dangerous-direct-browser-access": "true"
+      };
+    }
+    buildBody(base64Image, prompt) {
+      return {
+        model: this.model,
+        max_tokens: MAX_TOKENS,
+        messages: [
           {
-            host: "nportal.ntut.edu.tw",
-            containerSelector: ".authcode.co",
-            placement: "appendChild"
-          },
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: "image/png", data: base64Image } },
+              { type: "text", text: prompt }
+            ]
+          }
+        ]
+      };
+    }
+    /** 响应内容是块数组,可能混有 thinking 块,只取 text 块 */
+    extractText(data) {
+      return joinTextBlocks(data == null ? void 0 : data.content, (block) => (block == null ? void 0 : block.type) === "text");
+    }
+    fetchModelIdsFromApi() {
+      const url = this.endpoint().replace(/\/messages$/, "/models");
+      return this._requestModelIds(url, this.headers());
+    }
+  }
+  const CHAT_SUFFIX = "/chat/completions";
+  class ChatCompletionsProvider extends BaseProvider {
+    /** 用户只填了域名或 /v1 前缀时,自动补全 /chat/completions */
+    endpoint() {
+      return normalizeEndpoint(this.setting("ApiUrl") || this.meta.defaultUrl, CHAT_SUFFIX);
+    }
+    headers() {
+      return { ...JSON_HEADERS, ...this._authHeaders() };
+    }
+    buildBody(base64Image, prompt) {
+      return {
+        model: this.model,
+        messages: [
           {
-            host: "www.luogu.com.cn",
-            containerSelector: ".l-form-layout .img",
-            placement: "insertAfter",
-            injectCSS: `.l-form-layout .img .captcha-recognition-icon { display: none !important; }`
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: `data:image/png;base64,${base64Image}` } }
+            ]
           }
-        ];
-        const rule = siteCompatRules.find((r) => r.host === window.location.host);
-        if (!rule) return;
-        if (rule.injectCSS) {
-          const style = document.createElement("style");
-          style.textContent = rule.injectCSS;
-          document.head.appendChild(style);
-        }
-        const observer = new MutationObserver(() => {
-          const container = document.querySelector(rule.containerSelector);
-          if (!container) return;
-          const icon = document.querySelector(".captcha-recognition-icon");
-          if (!icon) return;
-          icon.parentNode.removeChild(icon);
-          if (rule.placement === "appendChild") {
-            container.appendChild(icon);
-          } else if (rule.placement === "insertAfter") {
-            container.parentNode.insertBefore(icon, container.nextSibling);
+        ]
+      };
+    }
+    extractText(data) {
+      var _a, _b, _c;
+      return joinTextBlocks((_c = (_b = (_a = data == null ? void 0 : data.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content);
+    }
+    fetchModelIdsFromApi() {
+      const url = this.endpoint().replace(/\/chat\/completions$/, "/models");
+      return this._requestModelIds(url, this._authHeaders());
+    }
+    /** 没有 Key 时(如本地 Ollama)不发送 Authorization */
+    _authHeaders() {
+      const key = this.setting("Key");
+      return key ? { Authorization: `Bearer ${key}` } : {};
+    }
+  }
+  class GeminiProvider extends BaseProvider {
+    get baseUrl() {
+      return this.setting("ApiUrl") || this.meta.defaultUrl;
+    }
+    endpoint() {
+      return `${this.baseUrl}/${this.model}:generateContent?key=${this.setting("Key")}`;
+    }
+    headers() {
+      return JSON_HEADERS;
+    }
+    buildBody(base64Image, prompt) {
+      return {
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: "image/png", data: base64Image } }
+            ]
           }
-          observer.disconnect();
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-      } catch (error) {
-        console.error("验证码识别插件创建阶段出错：", error);
+        ]
+      };
+    }
+    /** 忽略思考摘要(thought)片段,只取正文 */
+    extractText(data) {
+      var _a, _b, _c;
+      const parts = (_c = (_b = (_a = data == null ? void 0 : data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts;
+      return joinTextBlocks(parts, (part) => typeof (part == null ? void 0 : part.text) === "string" && !part.thought);
+    }
+    async fetchModelIdsFromApi() {
+      var _a;
+      const response = await this.http.request({
+        method: "GET",
+        url: `${this.baseUrl}?key=${this.setting("Key")}`,
+        headers: JSON_HEADERS
+      });
+      const models = (_a = response == null ? void 0 : response.data) == null ? void 0 : _a.models;
+      if (!Array.isArray(models)) {
+        return [];
       }
+      return models.filter((model) => this._isVisionModel(model)).map((model) => model.name.replace("models/", "")).filter(isChatModelId).sort();
+    }
+    _isVisionModel(model) {
+      var _a;
+      const supportsGenerate = (_a = model.supportedGenerationMethods) == null ? void 0 : _a.includes("generateContent");
+      return model.name.includes("gemini") && (model.name.includes("flash") || model.name.includes("pro")) && !!supportsGenerate;
+    }
+  }
+  const PROTOCOLS = {
+    openai: ChatCompletionsProvider,
+    anthropic: AnthropicProvider,
+    gemini: GeminiProvider
+  };
+  class ProviderRegistry {
+    /**
+     * @param {object} deps
+     * @param {import("../core/HttpClient.js").HttpClient} deps.http
+     * @param {object} deps.settings - 响应式设置对象
+     */
+    constructor(deps) {
+      this.settings = deps.settings;
+      this.providers = PROVIDER_PRESETS.map((meta) => new PROTOCOLS[meta.protocol]({ ...deps, meta }));
+    }
+    /** @returns {import("./BaseProvider.js").BaseProvider|undefined} */
+    get(id) {
+      return this.providers.find((provider) => provider.meta.id === id);
+    }
+    /** 当前选中的服务商 */
+    current() {
+      return this.get(this.settings.apiType);
+    }
+    /** 指定服务商(默认当前服务商)是否已配置 API Key */
+    isConfigured(id = this.settings.apiType) {
+      var _a;
+      return ((_a = this.get(id)) == null ? void 0 : _a.isConfigured()) ?? false;
+    }
+    /** 服务商显示名称,未知类型返回“未知” */
+    labelOf(id) {
+      var _a;
+      return ((_a = this.get(id)) == null ? void 0 : _a.meta.label) ?? "未知";
+    }
+  }
+  const BODY_LOCK_CLASS = "captcha-settings-open";
+  class PanelController {
+    constructor() {
+      this.state = vue.reactive({ visible: false });
+    }
+    get visible() {
+      return this.state.visible;
+    }
+    open() {
+      document.body.classList.add(BODY_LOCK_CLASS);
+      this.state.visible = true;
+    }
+    close() {
+      document.body.classList.remove(BODY_LOCK_CLASS);
+      this.state.visible = false;
+    }
+  }
+  const name = "CAPTCHA-automatic-recognition";
+  const version = "1.5.0";
+  const author = "Alex";
+  const description = "Automatically recognize the CAPTCHA on the webpage and fill it into the input box, click the recognition icon to trigger recognition.";
+  const type = "module";
+  const license = "Apache-2.0";
+  const scripts = {
+    dev: "vite --mode development",
+    build: "vite build",
+    preview: "vite preview"
+  };
+  const dependencies = {
+    vue: "^3.4.27",
+    axios: "^1.6.2"
+  };
+  const devDependencies = {
+    "@vitejs/plugin-vue": "^5.0.4",
+    less: "^4.1.0",
+    vite: "^5.2.12",
+    "vite-plugin-monkey": "^4.0.0"
+  };
+  const packageJson = {
+    name,
+    version,
+    author,
+    description,
+    type,
+    license,
+    scripts,
+    dependencies,
+    devDependencies
+  };
+  const SERVICES_KEY = Symbol("captcha-services");
+  function useServices() {
+    return vue.inject(SERVICES_KEY);
+  }
+  const _hoisted_1$9 = { key: 0 };
+  const _hoisted_2$9 = { key: 1 };
+  const _hoisted_3$9 = { key: 2 };
+  const _hoisted_4$9 = { key: 3 };
+  const _sfc_main$9 = {
+    __name: "AsyncStatusButton",
+    props: {
+      /** '' | 'loading' | 'success' | 'error' */
+      status: { type: String, default: "" },
+      buttonClass: { type: String, required: true },
+      idleText: { type: String, required: true },
+      successText: { type: String, required: true },
+      errorText: { type: String, required: true }
+    },
+    setup(__props) {
+      const props = __props;
+      const statusClass = vue.computed(() => props.status ? `test-${props.status}` : "");
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("button", {
+          type: "button",
+          class: vue.normalizeClass([__props.buttonClass, statusClass.value])
+        }, [
+          __props.status === "" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_1$9, vue.toDisplayString(__props.idleText), 1)) : __props.status === "success" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_2$9, vue.toDisplayString(__props.successText), 1)) : __props.status === "error" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_3$9, vue.toDisplayString(__props.errorText), 1)) : (vue.openBlock(), vue.createElementBlock("span", _hoisted_4$9))
+        ], 2);
+      };
+    }
+  };
+  const _hoisted_1$8 = { class: "captcha-settings-item" };
+  const _hoisted_2$8 = /* @__PURE__ */ vue.createElementVNode("label", null, "验证码规则管理：", -1);
+  const _hoisted_3$8 = { class: "rules-management" };
+  const _hoisted_4$8 = { class: "rules-url-input" };
+  const _hoisted_5$6 = ["placeholder"];
+  const _hoisted_6$4 = /* @__PURE__ */ vue.createElementVNode("small", null, "从远程加载最新的验证码识别规则", -1);
+  const _sfc_main$8 = {
+    __name: "RulesPanel",
+    setup(__props) {
+      const { settings, rules } = useServices();
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", _hoisted_1$8, [
+          _hoisted_2$8,
+          vue.createElementVNode("div", _hoisted_3$8, [
+            vue.createElementVNode("div", _hoisted_4$8, [
+              vue.withDirectives(vue.createElementVNode("input", {
+                type: "text",
+                "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => vue.unref(settings).rulesUrl = $event),
+                placeholder: vue.unref(DEFAULT_RULES_URL)
+              }, null, 8, _hoisted_5$6), [
+                [vue.vModelText, vue.unref(settings).rulesUrl]
+              ]),
+              vue.createElementVNode("small", null, "规则文件 URL，留空则使用默认 URL：" + vue.toDisplayString(vue.unref(DEFAULT_RULES_URL)), 1)
+            ]),
+            vue.createVNode(_sfc_main$9, {
+              "button-class": "reload-rules-button",
+              status: vue.unref(rules).state.status,
+              "idle-text": "重新加载规则",
+              "success-text": "加载成功",
+              "error-text": "加载失败",
+              onClick: _cache[1] || (_cache[1] = ($event) => vue.unref(rules).fetchAndSave())
+            }, null, 8, ["status"]),
+            _hoisted_6$4
+          ])
+        ]);
+      };
+    }
+  };
+  const _hoisted_1$7 = { class: "captcha-settings-item" };
+  const _hoisted_2$7 = { class: "custom-selectors" };
+  const _hoisted_3$7 = ["value", "placeholder", "onInput"];
+  const _hoisted_4$7 = ["onClick"];
+  const _sfc_main$7 = {
+    __name: "SelectorList",
+    props: /* @__PURE__ */ vue.mergeModels({
+      label: { type: String, required: true },
+      placeholder: { type: String, default: "" }
+    }, {
+      "modelValue": { type: Array },
+      "modelModifiers": {}
+    }),
+    emits: ["update:modelValue"],
+    setup(__props) {
+      const model = vue.useModel(__props, "modelValue");
+      function add() {
+        model.value = [...model.value, ""];
+      }
+      function remove(index) {
+        model.value = model.value.filter((_, i) => i !== index);
+      }
+      function update(index, value) {
+        model.value = model.value.map((selector, i) => i === index ? value : selector);
+      }
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", _hoisted_1$7, [
+          vue.createElementVNode("label", null, vue.toDisplayString(__props.label), 1),
+          vue.createElementVNode("div", _hoisted_2$7, [
+            (vue.openBlock(true), vue.createElementBlock(vue.Fragment, null, vue.renderList(model.value, (selector, index) => {
+              return vue.openBlock(), vue.createElementBlock("div", {
+                key: index,
+                class: "selector-item"
+              }, [
+                vue.createElementVNode("input", {
+                  type: "text",
+                  value: selector,
+                  placeholder: __props.placeholder,
+                  onInput: ($event) => update(index, $event.target.value)
+                }, null, 40, _hoisted_3$7),
+                vue.createElementVNode("button", {
+                  type: "button",
+                  class: "remove-selector",
+                  onClick: ($event) => remove(index)
+                }, "×", 8, _hoisted_4$7)
+              ]);
+            }), 128)),
+            vue.createElementVNode("button", {
+              type: "button",
+              class: "add-selector",
+              onClick: add
+            }, "添加选择器")
+          ])
+        ]);
+      };
+    }
+  };
+  const _hoisted_1$6 = { class: "settings-content-tab" };
+  const _hoisted_2$6 = { class: "settings-card" };
+  const _hoisted_3$6 = { class: "settings-card-title" };
+  const _hoisted_4$6 = ["href"];
+  const _hoisted_5$5 = /* @__PURE__ */ vue.createElementVNode("div", { class: "advanced-settings-warning" }, " ⚠️ 警告：如果您不了解 CSS 选择器，请不要修改这些设置，可能导致识别功能失效 ", -1);
+  const _sfc_main$6 = {
+    __name: "AdvancedTab",
+    setup(__props) {
+      const { settings } = useServices();
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", _hoisted_1$6, [
+          vue.createElementVNode("div", _hoisted_2$6, [
+            vue.createElementVNode("div", _hoisted_3$6, [
+              vue.createElementVNode("span", null, [
+                vue.createTextVNode(" 高级设置 "),
+                vue.createElementVNode("a", {
+                  href: vue.unref(TUTORIAL_URL),
+                  target: "_blank",
+                  class: "tutorial-link"
+                }, "教程", 8, _hoisted_4$6)
+              ])
+            ]),
+            _hoisted_5$5,
+            vue.createVNode(_sfc_main$7, {
+              modelValue: vue.unref(settings).customCaptchaSelectors,
+              "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => vue.unref(settings).customCaptchaSelectors = $event),
+              label: "自定义验证码图片选择器：",
+              placeholder: "例如: img[src*='captcha']"
+            }, null, 8, ["modelValue"]),
+            vue.createVNode(_sfc_main$7, {
+              modelValue: vue.unref(settings).customInputSelectors,
+              "onUpdate:modelValue": _cache[1] || (_cache[1] = ($event) => vue.unref(settings).customInputSelectors = $event),
+              label: "自定义输入框选择器：",
+              placeholder: "例如: input[name*='captcha']"
+            }, null, 8, ["modelValue"]),
+            vue.createVNode(_sfc_main$8)
+          ])
+        ]);
+      };
+    }
+  };
+  const _hoisted_1$5 = { class: "settings-content-tab" };
+  const _hoisted_2$5 = { class: "settings-card" };
+  const _hoisted_3$5 = /* @__PURE__ */ vue.createElementVNode("div", { class: "settings-card-title" }, [
+    /* @__PURE__ */ vue.createElementVNode("span", null, "禁用域名列表")
+  ], -1);
+  const _hoisted_4$5 = { class: "captcha-settings-item" };
+  const _hoisted_5$4 = /* @__PURE__ */ vue.createElementVNode("small", null, [
+    /* @__PURE__ */ vue.createTextVNode(" 在这些域名下将不启用验证码识别功能 "),
+    /* @__PURE__ */ vue.createElementVNode("br"),
+    /* @__PURE__ */ vue.createTextVNode(" 多个配置请使用换行显示 ")
+  ], -1);
+  const _sfc_main$5 = {
+    __name: "DomainTab",
+    setup(__props) {
+      const { settings } = useServices();
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", _hoisted_1$5, [
+          vue.createElementVNode("div", _hoisted_2$5, [
+            _hoisted_3$5,
+            vue.createElementVNode("div", _hoisted_4$5, [
+              vue.withDirectives(vue.createElementVNode("textarea", {
+                "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => vue.unref(settings).disabledDomains = $event),
+                placeholder: "每行一个域名，支持正则和通配符，例如：\r\nexample.com\r\n*.example.org\r\nexample.*.com\r\n/^(www\\.)?example\\.com$/",
+                rows: "6",
+                class: "domain-textarea"
+              }, null, 512), [
+                [vue.vModelText, vue.unref(settings).disabledDomains]
+              ]),
+              _hoisted_5$4
+            ])
+          ])
+        ]);
+      };
+    }
+  };
+  const _hoisted_1$4 = { class: "captcha-settings-item" };
+  const _hoisted_2$4 = { style: { "display": "flex", "align-items": "center" } };
+  const _hoisted_3$4 = ["id"];
+  const _hoisted_4$4 = ["for"];
+  const _sfc_main$4 = {
+    __name: "CheckboxField",
+    props: /* @__PURE__ */ vue.mergeModels({
+      /** input 的 id,同时用于 label 的 for 关联 */
+      id: { type: String, required: true },
+      label: { type: String, required: true }
+    }, {
+      "modelValue": { type: Boolean },
+      "modelModifiers": {}
+    }),
+    emits: ["update:modelValue"],
+    setup(__props) {
+      const model = vue.useModel(__props, "modelValue");
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", _hoisted_1$4, [
+          vue.createElementVNode("div", _hoisted_2$4, [
+            vue.withDirectives(vue.createElementVNode("input", {
+              type: "checkbox",
+              "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => model.value = $event),
+              id: __props.id,
+              style: { "width": "auto", "margin-right": "8px !important" }
+            }, null, 8, _hoisted_3$4), [
+              [vue.vModelCheckbox, model.value]
+            ]),
+            vue.createElementVNode("label", {
+              for: __props.id,
+              style: { "margin-bottom": "0" }
+            }, vue.toDisplayString(__props.label), 9, _hoisted_4$4)
+          ])
+        ]);
+      };
+    }
+  };
+  const _hoisted_1$3 = { class: "settings-content-tab" };
+  const _hoisted_2$3 = { class: "settings-card" };
+  const _hoisted_3$3 = /* @__PURE__ */ vue.createElementVNode("div", { class: "settings-card-title" }, [
+    /* @__PURE__ */ vue.createElementVNode("span", null, "功能设置")
+  ], -1);
+  const _hoisted_4$3 = { class: "captcha-settings-item" };
+  const _hoisted_5$3 = /* @__PURE__ */ vue.createElementVNode("label", null, "AI提示词模式:", -1);
+  const _hoisted_6$3 = /* @__PURE__ */ vue.createElementVNode("option", { value: "simple" }, "💰 简洁版 (节省Token ~92%)", -1);
+  const _hoisted_7$3 = /* @__PURE__ */ vue.createElementVNode("option", { value: "detailed" }, "🎯 详细版 (高精度识别)", -1);
+  const _hoisted_8$3 = [
+    _hoisted_6$3,
+    _hoisted_7$3
+  ];
+  const _hoisted_9$1 = /* @__PURE__ */ vue.createElementVNode("strong", null, "推荐使用简洁版", -1);
+  const _hoisted_10$1 = /* @__PURE__ */ vue.createElementVNode("br", null, null, -1);
+  const _hoisted_11$1 = /* @__PURE__ */ vue.createElementVNode("br", null, null, -1);
+  const _hoisted_12$1 = { style: { "margin-top": "8px" } };
+  const _hoisted_13$1 = /* @__PURE__ */ vue.createElementVNode("summary", { style: { "cursor": "pointer", "color": "#1a73e8" } }, "👁️ 预览当前选择的提示词", -1);
+  const _hoisted_14$1 = { style: { "background": "#f5f5f5", "padding": "10px", "border-radius": "4px", "margin-top": "5px", "font-family": "monospace", "font-size": "12px", "white-space": "pre-wrap", "max-height": "200px", "overflow-y": "auto" } };
+  const _sfc_main$3 = {
+    __name: "FunctionTab",
+    setup(__props) {
+      const CHECKBOX_OPTIONS = [
+        { id: "autoRecognize", label: "验证码图片变化时自动识别" },
+        { id: "copyToClipboard", label: "自动复制到剪贴板" },
+        { id: "showNotification", label: "显示右上角通知提示" },
+        { id: "autoFetchCloudRules", label: "每日首次运行时自动获取云端规则" }
+      ];
+      const { settings } = useServices();
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", _hoisted_1$3, [
+          vue.createElementVNode("div", _hoisted_2$3, [
+            _hoisted_3$3,
+            (vue.openBlock(), vue.createElementBlock(vue.Fragment, null, vue.renderList(CHECKBOX_OPTIONS, (option) => {
+              return vue.createVNode(_sfc_main$4, {
+                key: option.id,
+                modelValue: vue.unref(settings)[option.id],
+                "onUpdate:modelValue": ($event) => vue.unref(settings)[option.id] = $event,
+                id: option.id,
+                label: option.label
+              }, null, 8, ["modelValue", "onUpdate:modelValue", "id", "label"]);
+            }), 64)),
+            vue.createElementVNode("div", _hoisted_4$3, [
+              _hoisted_5$3,
+              vue.withDirectives(vue.createElementVNode("select", {
+                "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => vue.unref(settings).promptType = $event)
+              }, _hoisted_8$3, 512), [
+                [vue.vModelSelect, vue.unref(settings).promptType]
+              ]),
+              vue.createElementVNode("small", null, [
+                vue.createTextVNode(" 💡 "),
+                _hoisted_9$1,
+                vue.createTextVNode("：适合大多数验证码且大幅节省API费用"),
+                _hoisted_10$1,
+                vue.createTextVNode(" 📊 Token消耗对比：简洁版 ~50-80 tokens，详细版 ~800-1000 tokens"),
+                _hoisted_11$1,
+                vue.createElementVNode("details", _hoisted_12$1, [
+                  _hoisted_13$1,
+                  vue.createElementVNode("div", _hoisted_14$1, vue.toDisplayString(vue.unref(getBasePrompt)(vue.unref(settings).promptType)), 1)
+                ])
+              ])
+            ])
+          ])
+        ]);
+      };
+    }
+  };
+  const _hoisted_1$2 = { class: "captcha-settings-item" };
+  const _hoisted_2$2 = { class: "input-with-button" };
+  const _hoisted_3$2 = ["placeholder"];
+  const _hoisted_4$2 = { class: "captcha-settings-item" };
+  const _hoisted_5$2 = ["placeholder"];
+  const _hoisted_6$2 = { key: 0 };
+  const _hoisted_7$2 = { class: "captcha-settings-item" };
+  const _hoisted_8$2 = ["placeholder"];
+  const _hoisted_9 = ["value"];
+  const _hoisted_10 = { class: "captcha-settings-item" };
+  const _hoisted_11 = /* @__PURE__ */ vue.createElementVNode("label", null, "额外请求参数 (可选):", -1);
+  const _hoisted_12 = {
+    key: 0,
+    class: "field-error"
+  };
+  const _hoisted_13 = { key: 1 };
+  const _hoisted_14 = { class: "captcha-settings-item" };
+  const _hoisted_15 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义提示词 (可选):", -1);
+  const _hoisted_16 = { class: "textarea-with-button" };
+  const _hoisted_17 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认提示词", -1);
+  const _sfc_main$2 = {
+    __name: "ProviderForm",
+    props: {
+      /** 要编辑的 AI 服务商 */
+      provider: { type: Object, required: true }
+    },
+    setup(__props) {
+      const props = __props;
+      const { settings, tester } = useServices();
+      const meta = props.provider.meta;
+      const fields = {
+        key: `${meta.id}Key`,
+        url: `${meta.id}ApiUrl`,
+        model: `${meta.id}Model`,
+        extra: `${meta.id}ExtraParams`,
+        prompt: `${meta.id}Prompt`
+      };
+      const modelListId = `captcha-models-${meta.id}`;
+      const urlHint = meta.urlHint || (meta.defaultUrl ? "留空使用默认地址" : "");
+      const modelHint = (meta.modelHint ? `${meta.modelHint}。` : "") + (meta.defaultModel ? "留空使用默认模型，" : "") + "可直接输入模型名称，或从候选中选择。测试连接成功后会刷新可用模型列表。";
+      const modelOptions = vue.computed(() => {
+        const all2 = [meta.defaultModel, ...meta.knownModels, ...tester.models[meta.id]];
+        return [...new Set(all2.filter(Boolean))];
+      });
+      const extraParamsError = vue.computed(() => {
+        try {
+          parseJsonObject(settings[fields.extra]);
+          return "";
+        } catch (error) {
+          return error.message;
+        }
+      });
+      function fillDefaultPrompt() {
+        settings[fields.prompt] = getBasePrompt(settings.promptType);
+      }
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", null, [
+          vue.createElementVNode("div", _hoisted_1$2, [
+            vue.createElementVNode("label", null, vue.toDisplayString(vue.unref(meta).keyLabel), 1),
+            vue.createElementVNode("div", _hoisted_2$2, [
+              vue.withDirectives(vue.createElementVNode("input", {
+                type: "text",
+                "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => vue.unref(settings)[fields.key] = $event),
+                placeholder: vue.unref(meta).keyPlaceholder
+              }, null, 8, _hoisted_3$2), [
+                [vue.vModelText, vue.unref(settings)[fields.key]]
+              ]),
+              vue.createVNode(_sfc_main$9, {
+                "button-class": "test-api-button",
+                status: vue.unref(tester).status[vue.unref(meta).id],
+                "idle-text": "测试连接",
+                "success-text": "成功",
+                "error-text": "失败",
+                onClick: _cache[1] || (_cache[1] = ($event) => vue.unref(tester).test(vue.unref(meta).id))
+              }, null, 8, ["status"])
+            ])
+          ]),
+          vue.createElementVNode("div", _hoisted_4$2, [
+            vue.createElementVNode("label", null, vue.toDisplayString(vue.unref(meta).defaultUrl ? "自定义 API 地址 (可选):" : "API 地址:"), 1),
+            vue.withDirectives(vue.createElementVNode("input", {
+              type: "text",
+              "onUpdate:modelValue": _cache[2] || (_cache[2] = ($event) => vue.unref(settings)[fields.url] = $event),
+              placeholder: vue.unref(meta).defaultUrl || vue.unref(meta).urlPlaceholder
+            }, null, 8, _hoisted_5$2), [
+              [vue.vModelText, vue.unref(settings)[fields.url]]
+            ]),
+            vue.unref(urlHint) ? (vue.openBlock(), vue.createElementBlock("small", _hoisted_6$2, vue.toDisplayString(vue.unref(urlHint)), 1)) : vue.createCommentVNode("", true)
+          ]),
+          vue.createElementVNode("div", _hoisted_7$2, [
+            vue.createElementVNode("label", null, vue.toDisplayString(vue.unref(meta).defaultModel ? "模型 (可选):" : "模型:"), 1),
+            vue.withDirectives(vue.createElementVNode("input", {
+              type: "text",
+              "onUpdate:modelValue": _cache[3] || (_cache[3] = ($event) => vue.unref(settings)[fields.model] = $event),
+              list: modelListId,
+              placeholder: vue.unref(meta).defaultModel || "输入模型名称"
+            }, null, 8, _hoisted_8$2), [
+              [vue.vModelText, vue.unref(settings)[fields.model]]
+            ]),
+            vue.createElementVNode("datalist", { id: modelListId }, [
+              (vue.openBlock(true), vue.createElementBlock(vue.Fragment, null, vue.renderList(modelOptions.value, (model) => {
+                return vue.openBlock(), vue.createElementBlock("option", {
+                  key: model,
+                  value: model
+                }, null, 8, _hoisted_9);
+              }), 128))
+            ]),
+            vue.createElementVNode("small", null, vue.toDisplayString(modelHint))
+          ]),
+          vue.createElementVNode("div", _hoisted_10, [
+            _hoisted_11,
+            vue.withDirectives(vue.createElementVNode("textarea", {
+              "onUpdate:modelValue": _cache[4] || (_cache[4] = ($event) => vue.unref(settings)[fields.extra] = $event),
+              placeholder: 'JSON 对象，如 {"thinking": {"type": "disabled"}}',
+              rows: "3"
+            }, null, 512), [
+              [vue.vModelText, vue.unref(settings)[fields.extra]]
+            ]),
+            extraParamsError.value ? (vue.openBlock(), vue.createElementBlock("small", _hoisted_12, vue.toDisplayString(extraParamsError.value), 1)) : (vue.openBlock(), vue.createElementBlock("small", _hoisted_13, "合并进请求体，用于填写服务商专有参数(如关闭思考以降低延迟)。留空不使用"))
+          ]),
+          vue.createElementVNode("div", _hoisted_14, [
+            _hoisted_15,
+            vue.createElementVNode("div", _hoisted_16, [
+              vue.withDirectives(vue.createElementVNode("textarea", {
+                "onUpdate:modelValue": _cache[5] || (_cache[5] = ($event) => vue.unref(settings)[fields.prompt] = $event),
+                placeholder: "输入自定义提示词，或点击右侧按钮使用默认提示词",
+                rows: "3"
+              }, null, 512), [
+                [vue.vModelText, vue.unref(settings)[fields.prompt]]
+              ]),
+              vue.createElementVNode("button", {
+                type: "button",
+                class: "use-default-prompt",
+                onClick: fillDefaultPrompt
+              }, "使用默认")
+            ]),
+            _hoisted_17
+          ])
+        ]);
+      };
+    }
+  };
+  const _hoisted_1$1 = { class: "settings-content-tab" };
+  const _hoisted_2$1 = { class: "settings-card" };
+  const _hoisted_3$1 = { class: "settings-card-title" };
+  const _hoisted_4$1 = /* @__PURE__ */ vue.createElementVNode("span", null, "AI 服务商设置", -1);
+  const _hoisted_5$1 = { class: "api-type" };
+  const _hoisted_6$1 = { class: "captcha-settings-item" };
+  const _hoisted_7$1 = /* @__PURE__ */ vue.createElementVNode("label", null, "API 类型：", -1);
+  const _hoisted_8$1 = ["value"];
+  const _sfc_main$1 = {
+    __name: "ProviderTab",
+    setup(__props) {
+      const { settings, registry } = useServices();
+      const provider = vue.computed(() => registry.current());
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", _hoisted_1$1, [
+          vue.createElementVNode("div", _hoisted_2$1, [
+            vue.createElementVNode("div", _hoisted_3$1, [
+              _hoisted_4$1,
+              vue.createElementVNode("span", _hoisted_5$1, vue.toDisplayString(vue.unref(registry).labelOf(vue.unref(settings).apiType)), 1)
+            ]),
+            vue.createElementVNode("div", _hoisted_6$1, [
+              _hoisted_7$1,
+              vue.withDirectives(vue.createElementVNode("select", {
+                "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => vue.unref(settings).apiType = $event)
+              }, [
+                (vue.openBlock(true), vue.createElementBlock(vue.Fragment, null, vue.renderList(vue.unref(registry).providers, (item) => {
+                  return vue.openBlock(), vue.createElementBlock("option", {
+                    key: item.meta.id,
+                    value: item.meta.id
+                  }, vue.toDisplayString(item.meta.label), 9, _hoisted_8$1);
+                }), 128))
+              ], 512), [
+                [vue.vModelSelect, vue.unref(settings).apiType]
+              ])
+            ]),
+            provider.value ? (vue.openBlock(), vue.createBlock(_sfc_main$2, {
+              key: provider.value.meta.id,
+              provider: provider.value
+            }, null, 8, ["provider"])) : vue.createCommentVNode("", true)
+          ])
+        ]);
+      };
     }
   };
   const _hoisted_1 = { class: "captcha-recognition-container" };
@@ -4693,673 +5053,184 @@
   ];
   const _hoisted_4 = { class: "captcha-settings-content" };
   const _hoisted_5 = { class: "settings-nav" };
-  const _hoisted_6 = { class: "settings-content" };
-  const _hoisted_7 = {
-    key: 0,
-    class: "settings-content-tab"
-  };
-  const _hoisted_8 = { class: "settings-card" };
-  const _hoisted_9 = { class: "settings-card-title" };
-  const _hoisted_10 = /* @__PURE__ */ vue.createElementVNode("span", null, "AI 服务商设置", -1);
-  const _hoisted_11 = { class: "api-type" };
-  const _hoisted_12 = { class: "captcha-settings-item" };
-  const _hoisted_13 = /* @__PURE__ */ vue.createElementVNode("label", null, "API 类型：", -1);
-  const _hoisted_14 = /* @__PURE__ */ vue.createElementVNode("option", { value: "openai" }, "OpenAI", -1);
-  const _hoisted_15 = /* @__PURE__ */ vue.createElementVNode("option", { value: "gemini" }, "Google Gemini", -1);
-  const _hoisted_16 = /* @__PURE__ */ vue.createElementVNode("option", { value: "qwen" }, "阿里云通义千问", -1);
-  const _hoisted_17 = [
-    _hoisted_14,
-    _hoisted_15,
-    _hoisted_16
-  ];
-  const _hoisted_18 = { key: 0 };
-  const _hoisted_19 = { class: "captcha-settings-item" };
-  const _hoisted_20 = /* @__PURE__ */ vue.createElementVNode("label", null, "OpenAI API Key:", -1);
-  const _hoisted_21 = { class: "input-with-button" };
-  const _hoisted_22 = { key: 0 };
-  const _hoisted_23 = { key: 1 };
-  const _hoisted_24 = { key: 2 };
-  const _hoisted_25 = { key: 3 };
-  const _hoisted_26 = { class: "captcha-settings-item" };
-  const _hoisted_27 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义 API 地址 (可选):", -1);
-  const _hoisted_28 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认地址", -1);
-  const _hoisted_29 = { class: "captcha-settings-item" };
-  const _hoisted_30 = /* @__PURE__ */ vue.createElementVNode("label", null, "模型 (可选):", -1);
-  const _hoisted_31 = /* @__PURE__ */ vue.createElementVNode("option", { value: "" }, "使用默认模型 (gpt-4.1-mini)", -1);
-  const _hoisted_32 = ["value"];
-  const _hoisted_33 = ["value"];
-  const _hoisted_34 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认模型，或从列表中选择。测试连接成功后可获取可用模型列表。", -1);
-  const _hoisted_35 = { class: "captcha-settings-item" };
-  const _hoisted_36 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义提示词 (可选):", -1);
-  const _hoisted_37 = { class: "textarea-with-button" };
-  const _hoisted_38 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认提示词", -1);
-  const _hoisted_39 = { key: 1 };
-  const _hoisted_40 = { class: "captcha-settings-item" };
-  const _hoisted_41 = /* @__PURE__ */ vue.createElementVNode("label", null, "Google Gemini API Key:", -1);
-  const _hoisted_42 = { class: "input-with-button" };
-  const _hoisted_43 = { key: 0 };
-  const _hoisted_44 = { key: 1 };
-  const _hoisted_45 = { key: 2 };
-  const _hoisted_46 = { key: 3 };
-  const _hoisted_47 = { class: "captcha-settings-item" };
-  const _hoisted_48 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义 API 地址 (可选):", -1);
-  const _hoisted_49 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认地址", -1);
-  const _hoisted_50 = { class: "captcha-settings-item" };
-  const _hoisted_51 = /* @__PURE__ */ vue.createElementVNode("label", null, "模型 (可选):", -1);
-  const _hoisted_52 = /* @__PURE__ */ vue.createElementVNode("option", { value: "" }, "使用默认模型 (gemini-2.0-flash)", -1);
-  const _hoisted_53 = ["value"];
-  const _hoisted_54 = ["value"];
-  const _hoisted_55 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认模型，或从列表中选择。测试连接成功后可获取可用模型列表。", -1);
-  const _hoisted_56 = { class: "captcha-settings-item" };
-  const _hoisted_57 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义提示词 (可选):", -1);
-  const _hoisted_58 = { class: "textarea-with-button" };
-  const _hoisted_59 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认提示词", -1);
-  const _hoisted_60 = { key: 2 };
-  const _hoisted_61 = { class: "captcha-settings-item" };
-  const _hoisted_62 = /* @__PURE__ */ vue.createElementVNode("label", null, "阿里云通义千问 API Key:", -1);
-  const _hoisted_63 = { class: "input-with-button" };
-  const _hoisted_64 = { key: 0 };
-  const _hoisted_65 = { key: 1 };
-  const _hoisted_66 = { key: 2 };
-  const _hoisted_67 = { key: 3 };
-  const _hoisted_68 = { class: "captcha-settings-item" };
-  const _hoisted_69 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义 API 地址 (可选):", -1);
-  const _hoisted_70 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认地址", -1);
-  const _hoisted_71 = { class: "captcha-settings-item" };
-  const _hoisted_72 = /* @__PURE__ */ vue.createElementVNode("label", null, "模型 (可选):", -1);
-  const _hoisted_73 = /* @__PURE__ */ vue.createElementVNode("option", { value: "" }, "使用默认模型 (qwen-vl-max-2025-04-02)", -1);
-  const _hoisted_74 = ["value"];
-  const _hoisted_75 = ["value"];
-  const _hoisted_76 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认模型，或从列表中选择。测试连接成功后可获取可用模型列表。", -1);
-  const _hoisted_77 = { class: "captcha-settings-item" };
-  const _hoisted_78 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义提示词 (可选):", -1);
-  const _hoisted_79 = { class: "textarea-with-button" };
-  const _hoisted_80 = /* @__PURE__ */ vue.createElementVNode("small", null, "留空使用默认提示词", -1);
-  const _hoisted_81 = {
-    key: 1,
-    class: "settings-content-tab"
-  };
-  const _hoisted_82 = { class: "settings-card" };
-  const _hoisted_83 = /* @__PURE__ */ vue.createElementVNode("div", { class: "settings-card-title" }, [
-    /* @__PURE__ */ vue.createElementVNode("span", null, "功能设置")
-  ], -1);
-  const _hoisted_84 = { class: "captcha-settings-item" };
-  const _hoisted_85 = { style: { "display": "flex", "align-items": "center" } };
-  const _hoisted_86 = /* @__PURE__ */ vue.createElementVNode("label", {
-    for: "autoRecognize",
-    style: { "margin-bottom": "0" }
-  }, "验证码图片变化时自动识别", -1);
-  const _hoisted_87 = { class: "captcha-settings-item" };
-  const _hoisted_88 = { style: { "display": "flex", "align-items": "center" } };
-  const _hoisted_89 = /* @__PURE__ */ vue.createElementVNode("label", {
-    for: "copyToClipboard",
-    style: { "margin-bottom": "0" }
-  }, "自动复制到剪贴板", -1);
-  const _hoisted_90 = { class: "captcha-settings-item" };
-  const _hoisted_91 = { style: { "display": "flex", "align-items": "center" } };
-  const _hoisted_92 = /* @__PURE__ */ vue.createElementVNode("label", {
-    for: "showNotification",
-    style: { "margin-bottom": "0" }
-  }, "显示右上角通知提示", -1);
-  const _hoisted_93 = { class: "captcha-settings-item" };
-  const _hoisted_94 = { style: { "display": "flex", "align-items": "center" } };
-  const _hoisted_95 = /* @__PURE__ */ vue.createElementVNode("label", {
-    for: "autoFetchCloudRules",
-    style: { "margin-bottom": "0" }
-  }, "每日首次运行时自动获取云端规则", -1);
-  const _hoisted_96 = { class: "captcha-settings-item" };
-  const _hoisted_97 = /* @__PURE__ */ vue.createElementVNode("label", null, "AI提示词模式:", -1);
-  const _hoisted_98 = /* @__PURE__ */ vue.createElementVNode("option", { value: "simple" }, "💰 简洁版 (节省Token ~92%)", -1);
-  const _hoisted_99 = /* @__PURE__ */ vue.createElementVNode("option", { value: "detailed" }, "🎯 详细版 (高精度识别)", -1);
-  const _hoisted_100 = [
-    _hoisted_98,
-    _hoisted_99
-  ];
-  const _hoisted_101 = /* @__PURE__ */ vue.createElementVNode("strong", null, "推荐使用简洁版", -1);
-  const _hoisted_102 = /* @__PURE__ */ vue.createElementVNode("br", null, null, -1);
-  const _hoisted_103 = /* @__PURE__ */ vue.createElementVNode("br", null, null, -1);
-  const _hoisted_104 = { style: { "margin-top": "8px" } };
-  const _hoisted_105 = /* @__PURE__ */ vue.createElementVNode("summary", { style: { "cursor": "pointer", "color": "#1a73e8" } }, "👁️ 预览当前选择的提示词", -1);
-  const _hoisted_106 = { style: { "background": "#f5f5f5", "padding": "10px", "border-radius": "4px", "margin-top": "5px", "font-family": "monospace", "font-size": "12px", "white-space": "pre-wrap", "max-height": "200px", "overflow-y": "auto" } };
-  const _hoisted_107 = {
-    key: 2,
-    class: "settings-content-tab"
-  };
-  const _hoisted_108 = { class: "settings-card" };
-  const _hoisted_109 = /* @__PURE__ */ vue.createElementVNode("div", { class: "settings-card-title" }, [
-    /* @__PURE__ */ vue.createElementVNode("span", null, "禁用域名列表")
-  ], -1);
-  const _hoisted_110 = { class: "captcha-settings-item" };
-  const _hoisted_111 = /* @__PURE__ */ vue.createElementVNode("small", null, [
-    /* @__PURE__ */ vue.createTextVNode(" 在这些域名下将不启用验证码识别功能 "),
-    /* @__PURE__ */ vue.createElementVNode("br"),
-    /* @__PURE__ */ vue.createTextVNode(" 多个配置请使用换行显示 ")
-  ], -1);
-  const _hoisted_112 = {
-    key: 3,
-    class: "settings-content-tab"
-  };
-  const _hoisted_113 = { class: "settings-card" };
-  const _hoisted_114 = /* @__PURE__ */ vue.createElementVNode("div", { class: "settings-card-title" }, [
-    /* @__PURE__ */ vue.createElementVNode("span", null, [
-      /* @__PURE__ */ vue.createTextVNode("高级设置 "),
-      /* @__PURE__ */ vue.createElementVNode("a", {
-        href: "https://github.com/anghunk/UserScript/tree/main/CAPTCHA-automatic-recognition/docs/advanced-settings.md",
-        target: "_blank",
-        class: "tutorial-link"
-      }, "教程")
-    ])
-  ], -1);
-  const _hoisted_115 = /* @__PURE__ */ vue.createElementVNode("div", { class: "advanced-settings-warning" }, " ⚠️ 警告：如果您不了解 CSS 选择器，请不要修改这些设置，可能导致识别功能失效 ", -1);
-  const _hoisted_116 = { class: "captcha-settings-item" };
-  const _hoisted_117 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义验证码图片选择器：", -1);
-  const _hoisted_118 = { class: "custom-selectors" };
-  const _hoisted_119 = ["onUpdate:modelValue"];
-  const _hoisted_120 = ["onClick"];
-  const _hoisted_121 = { class: "captcha-settings-item" };
-  const _hoisted_122 = /* @__PURE__ */ vue.createElementVNode("label", null, "自定义输入框选择器：", -1);
-  const _hoisted_123 = { class: "custom-selectors" };
-  const _hoisted_124 = ["onUpdate:modelValue"];
-  const _hoisted_125 = ["onClick"];
-  const _hoisted_126 = { class: "captcha-settings-item" };
-  const _hoisted_127 = /* @__PURE__ */ vue.createElementVNode("label", null, "验证码规则管理：", -1);
-  const _hoisted_128 = { class: "rules-management" };
-  const _hoisted_129 = { class: "rules-url-input" };
-  const _hoisted_130 = /* @__PURE__ */ vue.createElementVNode("small", null, "规则文件 URL，留空则使用默认 URL：https://raw.githubusercontent.com/anghunk/UserScript/main/CAPTCHA-automatic-recognition/rules.json", -1);
-  const _hoisted_131 = { key: 0 };
-  const _hoisted_132 = { key: 1 };
-  const _hoisted_133 = { key: 2 };
-  const _hoisted_134 = { key: 3 };
-  const _hoisted_135 = /* @__PURE__ */ vue.createElementVNode("small", null, "从远程加载最新的验证码识别规则", -1);
-  const _hoisted_136 = { class: "captcha-settings-buttons" };
-  function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
-    return vue.openBlock(), vue.createElementBlock("div", _hoisted_1, [
-      $data.process.env.NODE_ENV === "development" && !$data.showSettings ? (vue.openBlock(), vue.createElementBlock("div", {
-        key: 0,
-        class: "dev-settings-button",
-        onClick: _cache[0] || (_cache[0] = (...args) => $options.openSettings && $options.openSettings(...args))
-      }, _hoisted_3)) : vue.createCommentVNode("", true),
-      $data.showSettings ? (vue.openBlock(), vue.createElementBlock("div", {
-        key: 1,
-        class: "captcha-settings-overlay",
-        onClick: _cache[1] || (_cache[1] = (...args) => $options.closeSettings && $options.closeSettings(...args))
-      })) : vue.createCommentVNode("", true),
-      $data.showSettings ? (vue.openBlock(), vue.createElementBlock("div", {
-        key: 2,
-        class: vue.normalizeClass(["captcha-settings-modal", { show: $data.showSettings }]),
-        onClick: _cache[37] || (_cache[37] = vue.withModifiers(() => {
-        }, ["stop"]))
-      }, [
-        vue.createElementVNode("div", _hoisted_4, [
-          vue.createElementVNode("h3", null, [
-            vue.createTextVNode(" 验证码识别设置 "),
-            vue.createElementVNode("span", null, vue.toDisplayString($data.packageJson.version), 1)
-          ]),
-          vue.createElementVNode("div", _hoisted_5, [
-            vue.createElementVNode("div", {
-              class: vue.normalizeClass(["settings-nav-item", { active: $data.activeSettingTab === "ai" }]),
-              onClick: _cache[2] || (_cache[2] = ($event) => $data.activeSettingTab = "ai")
-            }, " AI 服务商 ", 2),
-            vue.createElementVNode("div", {
-              class: vue.normalizeClass(["settings-nav-item", { active: $data.activeSettingTab === "function" }]),
-              onClick: _cache[3] || (_cache[3] = ($event) => $data.activeSettingTab = "function")
-            }, " 功能设置 ", 2),
-            vue.createElementVNode("div", {
-              class: vue.normalizeClass(["settings-nav-item", { active: $data.activeSettingTab === "domain" }]),
-              onClick: _cache[4] || (_cache[4] = ($event) => $data.activeSettingTab = "domain")
-            }, " 禁用域名 ", 2),
-            vue.createElementVNode("div", {
-              class: vue.normalizeClass(["settings-nav-item", { active: $data.activeSettingTab === "advanced" }]),
-              onClick: _cache[5] || (_cache[5] = ($event) => $data.activeSettingTab = "advanced")
-            }, " 高级设置 ", 2)
-          ]),
-          vue.createElementVNode("div", _hoisted_6, [
-            $data.activeSettingTab === "ai" ? (vue.openBlock(), vue.createElementBlock("div", _hoisted_7, [
+  const _hoisted_6 = ["onClick"];
+  const _hoisted_7 = { class: "settings-content" };
+  const _hoisted_8 = { class: "captcha-settings-buttons" };
+  const _sfc_main = {
+    __name: "SettingsApp",
+    setup(__props) {
+      const TABS = [
+        { id: "ai", label: "AI 服务商", component: _sfc_main$1 },
+        { id: "function", label: "功能设置", component: _sfc_main$3 },
+        { id: "domain", label: "禁用域名", component: _sfc_main$5 },
+        { id: "advanced", label: "高级设置", component: _sfc_main$6 }
+      ];
+      const version2 = packageJson.version;
+      const isDev = false;
+      const { panel, settingsStore, toast } = useServices();
+      const activeTabId = vue.ref(TABS[0].id);
+      const activeTab = vue.computed(() => TABS.find((tab) => tab.id === activeTabId.value));
+      function save() {
+        try {
+          settingsStore.save();
+          panel.close();
+          toast.show("设置已保存！", "success");
+        } catch (error) {
+          console.error("保存设置失败：", error);
+          toast.show("保存设置失败，请查看控制台获取更多信息。", "error");
+        }
+      }
+      return (_ctx, _cache) => {
+        return vue.openBlock(), vue.createElementBlock("div", _hoisted_1, [
+          vue.unref(isDev) && !vue.unref(panel).state.visible ? (vue.openBlock(), vue.createElementBlock("div", {
+            key: 0,
+            class: "dev-settings-button",
+            onClick: _cache[0] || (_cache[0] = ($event) => vue.unref(panel).open())
+          }, _hoisted_3)) : vue.createCommentVNode("", true),
+          vue.unref(panel).state.visible ? (vue.openBlock(), vue.createElementBlock("div", {
+            key: 1,
+            class: "captcha-settings-overlay",
+            onClick: _cache[1] || (_cache[1] = ($event) => vue.unref(panel).close())
+          })) : vue.createCommentVNode("", true),
+          vue.unref(panel).state.visible ? (vue.openBlock(), vue.createElementBlock("div", {
+            key: 2,
+            class: "captcha-settings-modal show",
+            onClick: _cache[3] || (_cache[3] = vue.withModifiers(() => {
+            }, ["stop"]))
+          }, [
+            vue.createElementVNode("div", _hoisted_4, [
+              vue.createElementVNode("h3", null, [
+                vue.createTextVNode(" 验证码识别设置 "),
+                vue.createElementVNode("span", null, vue.toDisplayString(vue.unref(version2)), 1)
+              ]),
+              vue.createElementVNode("div", _hoisted_5, [
+                (vue.openBlock(), vue.createElementBlock(vue.Fragment, null, vue.renderList(TABS, (tab) => {
+                  return vue.createElementVNode("div", {
+                    key: tab.id,
+                    class: vue.normalizeClass(["settings-nav-item", { active: activeTabId.value === tab.id }]),
+                    onClick: ($event) => activeTabId.value = tab.id
+                  }, vue.toDisplayString(tab.label), 11, _hoisted_6);
+                }), 64))
+              ]),
+              vue.createElementVNode("div", _hoisted_7, [
+                (vue.openBlock(), vue.createBlock(vue.resolveDynamicComponent(activeTab.value.component)))
+              ]),
               vue.createElementVNode("div", _hoisted_8, [
-                vue.createElementVNode("div", _hoisted_9, [
-                  _hoisted_10,
-                  vue.createElementVNode("span", _hoisted_11, vue.toDisplayString($options.getApiTypeName($data.settings.apiType)), 1)
-                ]),
-                vue.createElementVNode("div", _hoisted_12, [
-                  _hoisted_13,
-                  vue.withDirectives(vue.createElementVNode("select", {
-                    "onUpdate:modelValue": _cache[6] || (_cache[6] = ($event) => $data.settings.apiType = $event)
-                  }, _hoisted_17, 512), [
-                    [vue.vModelSelect, $data.settings.apiType]
-                  ])
-                ]),
-                $data.settings.apiType === "openai" ? (vue.openBlock(), vue.createElementBlock("div", _hoisted_18, [
-                  vue.createElementVNode("div", _hoisted_19, [
-                    _hoisted_20,
-                    vue.createElementVNode("div", _hoisted_21, [
-                      vue.withDirectives(vue.createElementVNode("input", {
-                        type: "text",
-                        "onUpdate:modelValue": _cache[7] || (_cache[7] = ($event) => $data.settings.openaiKey = $event),
-                        placeholder: "sk-..."
-                      }, null, 512), [
-                        [vue.vModelText, $data.settings.openaiKey]
-                      ]),
-                      vue.createElementVNode("button", {
-                        type: "button",
-                        class: vue.normalizeClass(["test-api-button", {
-                          "test-loading": $data.apiTestStatus.openai === "loading",
-                          "test-success": $data.apiTestStatus.openai === "success",
-                          "test-error": $data.apiTestStatus.openai === "error"
-                        }]),
-                        onClick: _cache[8] || (_cache[8] = ($event) => $options.testApiConnection("openai"))
-                      }, [
-                        $data.apiTestStatus.openai === "" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_22, "测试连接")) : $data.apiTestStatus.openai === "loading" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_23)) : $data.apiTestStatus.openai === "success" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_24, "成功")) : $data.apiTestStatus.openai === "error" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_25, "失败")) : vue.createCommentVNode("", true)
-                      ], 2)
-                    ])
-                  ]),
-                  vue.createElementVNode("div", _hoisted_26, [
-                    _hoisted_27,
-                    vue.withDirectives(vue.createElementVNode("input", {
-                      type: "text",
-                      "onUpdate:modelValue": _cache[9] || (_cache[9] = ($event) => $data.settings.openaiApiUrl = $event),
-                      placeholder: "https://api.openai.com/v1/chat/completions"
-                    }, null, 512), [
-                      [vue.vModelText, $data.settings.openaiApiUrl]
-                    ]),
-                    _hoisted_28
-                  ]),
-                  vue.createElementVNode("div", _hoisted_29, [
-                    _hoisted_30,
-                    vue.withDirectives(vue.createElementVNode("select", {
-                      "onUpdate:modelValue": _cache[10] || (_cache[10] = ($event) => $data.settings.openaiModel = $event)
-                    }, [
-                      _hoisted_31,
-                      $data.settings.openaiModel && !$data.availableModels.openai.includes($data.settings.openaiModel) ? (vue.openBlock(), vue.createElementBlock("option", {
-                        key: 0,
-                        value: $data.settings.openaiModel
-                      }, vue.toDisplayString($data.settings.openaiModel) + " (当前选择) ", 9, _hoisted_32)) : vue.createCommentVNode("", true),
-                      (vue.openBlock(true), vue.createElementBlock(vue.Fragment, null, vue.renderList($data.availableModels.openai, (model) => {
-                        return vue.openBlock(), vue.createElementBlock("option", {
-                          key: model,
-                          value: model
-                        }, vue.toDisplayString(model), 9, _hoisted_33);
-                      }), 128))
-                    ], 512), [
-                      [vue.vModelSelect, $data.settings.openaiModel]
-                    ]),
-                    _hoisted_34
-                  ]),
-                  vue.createElementVNode("div", _hoisted_35, [
-                    _hoisted_36,
-                    vue.createElementVNode("div", _hoisted_37, [
-                      vue.withDirectives(vue.createElementVNode("textarea", {
-                        "onUpdate:modelValue": _cache[11] || (_cache[11] = ($event) => $data.settings.openaiPrompt = $event),
-                        placeholder: "输入自定义提示词，或点击右侧按钮使用默认提示词",
-                        rows: "3"
-                      }, null, 512), [
-                        [vue.vModelText, $data.settings.openaiPrompt]
-                      ]),
-                      vue.createElementVNode("button", {
-                        type: "button",
-                        class: "use-default-prompt",
-                        onClick: _cache[12] || (_cache[12] = ($event) => $data.settings.openaiPrompt = $data.settings.promptType === "simple" ? $data.SIMPLE_PROMPT : $data.DEFAULT_PROMPT)
-                      }, " 使用默认 ")
-                    ]),
-                    _hoisted_38
-                  ])
-                ])) : vue.createCommentVNode("", true),
-                $data.settings.apiType === "gemini" ? (vue.openBlock(), vue.createElementBlock("div", _hoisted_39, [
-                  vue.createElementVNode("div", _hoisted_40, [
-                    _hoisted_41,
-                    vue.createElementVNode("div", _hoisted_42, [
-                      vue.withDirectives(vue.createElementVNode("input", {
-                        type: "text",
-                        "onUpdate:modelValue": _cache[13] || (_cache[13] = ($event) => $data.settings.geminiKey = $event),
-                        placeholder: "输入Gemini API Key"
-                      }, null, 512), [
-                        [vue.vModelText, $data.settings.geminiKey]
-                      ]),
-                      vue.createElementVNode("button", {
-                        type: "button",
-                        class: vue.normalizeClass(["test-api-button", {
-                          "test-loading": $data.apiTestStatus.gemini === "loading",
-                          "test-success": $data.apiTestStatus.gemini === "success",
-                          "test-error": $data.apiTestStatus.gemini === "error"
-                        }]),
-                        onClick: _cache[14] || (_cache[14] = ($event) => $options.testApiConnection("gemini"))
-                      }, [
-                        $data.apiTestStatus.gemini === "" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_43, "测试连接")) : $data.apiTestStatus.gemini === "loading" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_44)) : $data.apiTestStatus.gemini === "success" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_45, "成功")) : $data.apiTestStatus.gemini === "error" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_46, "失败")) : vue.createCommentVNode("", true)
-                      ], 2)
-                    ])
-                  ]),
-                  vue.createElementVNode("div", _hoisted_47, [
-                    _hoisted_48,
-                    vue.withDirectives(vue.createElementVNode("input", {
-                      type: "text",
-                      "onUpdate:modelValue": _cache[15] || (_cache[15] = ($event) => $data.settings.geminiApiUrl = $event),
-                      placeholder: "https://generativelanguage.googleapis.com/v1beta/models"
-                    }, null, 512), [
-                      [vue.vModelText, $data.settings.geminiApiUrl]
-                    ]),
-                    _hoisted_49
-                  ]),
-                  vue.createElementVNode("div", _hoisted_50, [
-                    _hoisted_51,
-                    vue.withDirectives(vue.createElementVNode("select", {
-                      "onUpdate:modelValue": _cache[16] || (_cache[16] = ($event) => $data.settings.geminiModel = $event)
-                    }, [
-                      _hoisted_52,
-                      $data.settings.geminiModel && !$data.availableModels.gemini.includes($data.settings.geminiModel) ? (vue.openBlock(), vue.createElementBlock("option", {
-                        key: 0,
-                        value: $data.settings.geminiModel
-                      }, vue.toDisplayString($data.settings.geminiModel) + " (当前选择) ", 9, _hoisted_53)) : vue.createCommentVNode("", true),
-                      (vue.openBlock(true), vue.createElementBlock(vue.Fragment, null, vue.renderList($data.availableModels.gemini, (model) => {
-                        return vue.openBlock(), vue.createElementBlock("option", {
-                          key: model,
-                          value: model
-                        }, vue.toDisplayString(model), 9, _hoisted_54);
-                      }), 128))
-                    ], 512), [
-                      [vue.vModelSelect, $data.settings.geminiModel]
-                    ]),
-                    _hoisted_55
-                  ]),
-                  vue.createElementVNode("div", _hoisted_56, [
-                    _hoisted_57,
-                    vue.createElementVNode("div", _hoisted_58, [
-                      vue.withDirectives(vue.createElementVNode("textarea", {
-                        "onUpdate:modelValue": _cache[17] || (_cache[17] = ($event) => $data.settings.geminiPrompt = $event),
-                        placeholder: "输入自定义提示词，或点击右侧按钮使用默认提示词",
-                        rows: "3"
-                      }, null, 512), [
-                        [vue.vModelText, $data.settings.geminiPrompt]
-                      ]),
-                      vue.createElementVNode("button", {
-                        type: "button",
-                        class: "use-default-prompt",
-                        onClick: _cache[18] || (_cache[18] = ($event) => $data.settings.geminiPrompt = $data.settings.promptType === "simple" ? $data.SIMPLE_PROMPT : $data.DEFAULT_PROMPT)
-                      }, " 使用默认 ")
-                    ]),
-                    _hoisted_59
-                  ])
-                ])) : vue.createCommentVNode("", true),
-                $data.settings.apiType === "qwen" ? (vue.openBlock(), vue.createElementBlock("div", _hoisted_60, [
-                  vue.createElementVNode("div", _hoisted_61, [
-                    _hoisted_62,
-                    vue.createElementVNode("div", _hoisted_63, [
-                      vue.withDirectives(vue.createElementVNode("input", {
-                        type: "text",
-                        "onUpdate:modelValue": _cache[19] || (_cache[19] = ($event) => $data.settings.qwenKey = $event),
-                        placeholder: "API Key"
-                      }, null, 512), [
-                        [vue.vModelText, $data.settings.qwenKey]
-                      ]),
-                      vue.createElementVNode("button", {
-                        type: "button",
-                        class: vue.normalizeClass(["test-api-button", {
-                          "test-loading": $data.apiTestStatus.qwen === "loading",
-                          "test-success": $data.apiTestStatus.qwen === "success",
-                          "test-error": $data.apiTestStatus.qwen === "error"
-                        }]),
-                        onClick: _cache[20] || (_cache[20] = ($event) => $options.testApiConnection("qwen"))
-                      }, [
-                        $data.apiTestStatus.qwen === "" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_64, "测试连接")) : $data.apiTestStatus.qwen === "loading" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_65)) : $data.apiTestStatus.qwen === "success" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_66, "成功")) : $data.apiTestStatus.qwen === "error" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_67, "失败")) : vue.createCommentVNode("", true)
-                      ], 2)
-                    ])
-                  ]),
-                  vue.createElementVNode("div", _hoisted_68, [
-                    _hoisted_69,
-                    vue.withDirectives(vue.createElementVNode("input", {
-                      type: "text",
-                      "onUpdate:modelValue": _cache[21] || (_cache[21] = ($event) => $data.settings.qwenApiUrl = $event),
-                      placeholder: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
-                    }, null, 512), [
-                      [vue.vModelText, $data.settings.qwenApiUrl]
-                    ]),
-                    _hoisted_70
-                  ]),
-                  vue.createElementVNode("div", _hoisted_71, [
-                    _hoisted_72,
-                    vue.withDirectives(vue.createElementVNode("select", {
-                      "onUpdate:modelValue": _cache[22] || (_cache[22] = ($event) => $data.settings.qwenModel = $event)
-                    }, [
-                      _hoisted_73,
-                      $data.settings.qwenModel && !$data.availableModels.qwen.includes($data.settings.qwenModel) ? (vue.openBlock(), vue.createElementBlock("option", {
-                        key: 0,
-                        value: $data.settings.qwenModel
-                      }, vue.toDisplayString($data.settings.qwenModel) + " (当前选择) ", 9, _hoisted_74)) : vue.createCommentVNode("", true),
-                      (vue.openBlock(true), vue.createElementBlock(vue.Fragment, null, vue.renderList($data.availableModels.qwen, (model) => {
-                        return vue.openBlock(), vue.createElementBlock("option", {
-                          key: model,
-                          value: model
-                        }, vue.toDisplayString(model), 9, _hoisted_75);
-                      }), 128))
-                    ], 512), [
-                      [vue.vModelSelect, $data.settings.qwenModel]
-                    ]),
-                    _hoisted_76
-                  ]),
-                  vue.createElementVNode("div", _hoisted_77, [
-                    _hoisted_78,
-                    vue.createElementVNode("div", _hoisted_79, [
-                      vue.withDirectives(vue.createElementVNode("textarea", {
-                        "onUpdate:modelValue": _cache[23] || (_cache[23] = ($event) => $data.settings.qwenPrompt = $event),
-                        placeholder: "输入自定义提示词，或点击右侧按钮使用默认提示词",
-                        rows: "3"
-                      }, null, 512), [
-                        [vue.vModelText, $data.settings.qwenPrompt]
-                      ]),
-                      vue.createElementVNode("button", {
-                        type: "button",
-                        class: "use-default-prompt",
-                        onClick: _cache[24] || (_cache[24] = ($event) => $data.settings.qwenPrompt = $data.settings.promptType === "simple" ? $data.SIMPLE_PROMPT : $data.DEFAULT_PROMPT)
-                      }, " 使用默认 ")
-                    ]),
-                    _hoisted_80
-                  ])
-                ])) : vue.createCommentVNode("", true)
+                vue.createElementVNode("button", { onClick: save }, "保存设置"),
+                vue.createElementVNode("button", {
+                  onClick: _cache[2] || (_cache[2] = ($event) => vue.unref(panel).close())
+                }, "取消")
               ])
-            ])) : vue.createCommentVNode("", true),
-            $data.activeSettingTab === "function" ? (vue.openBlock(), vue.createElementBlock("div", _hoisted_81, [
-              vue.createElementVNode("div", _hoisted_82, [
-                _hoisted_83,
-                vue.createElementVNode("div", _hoisted_84, [
-                  vue.createElementVNode("div", _hoisted_85, [
-                    vue.withDirectives(vue.createElementVNode("input", {
-                      type: "checkbox",
-                      "onUpdate:modelValue": _cache[25] || (_cache[25] = ($event) => $data.settings.autoRecognize = $event),
-                      id: "autoRecognize",
-                      style: { "width": "auto", "margin-right": "8px !important" }
-                    }, null, 512), [
-                      [vue.vModelCheckbox, $data.settings.autoRecognize]
-                    ]),
-                    _hoisted_86
-                  ])
-                ]),
-                vue.createElementVNode("div", _hoisted_87, [
-                  vue.createElementVNode("div", _hoisted_88, [
-                    vue.withDirectives(vue.createElementVNode("input", {
-                      type: "checkbox",
-                      "onUpdate:modelValue": _cache[26] || (_cache[26] = ($event) => $data.settings.copyToClipboard = $event),
-                      id: "copyToClipboard",
-                      style: { "width": "auto", "margin-right": "8px !important" }
-                    }, null, 512), [
-                      [vue.vModelCheckbox, $data.settings.copyToClipboard]
-                    ]),
-                    _hoisted_89
-                  ])
-                ]),
-                vue.createElementVNode("div", _hoisted_90, [
-                  vue.createElementVNode("div", _hoisted_91, [
-                    vue.withDirectives(vue.createElementVNode("input", {
-                      type: "checkbox",
-                      "onUpdate:modelValue": _cache[27] || (_cache[27] = ($event) => $data.settings.showNotification = $event),
-                      id: "showNotification",
-                      style: { "width": "auto", "margin-right": "8px !important" }
-                    }, null, 512), [
-                      [vue.vModelCheckbox, $data.settings.showNotification]
-                    ]),
-                    _hoisted_92
-                  ])
-                ]),
-                vue.createElementVNode("div", _hoisted_93, [
-                  vue.createElementVNode("div", _hoisted_94, [
-                    vue.withDirectives(vue.createElementVNode("input", {
-                      type: "checkbox",
-                      "onUpdate:modelValue": _cache[28] || (_cache[28] = ($event) => $data.settings.autoFetchCloudRules = $event),
-                      id: "autoFetchCloudRules",
-                      style: { "width": "auto", "margin-right": "8px !important" }
-                    }, null, 512), [
-                      [vue.vModelCheckbox, $data.settings.autoFetchCloudRules]
-                    ]),
-                    _hoisted_95
-                  ])
-                ]),
-                vue.createElementVNode("div", _hoisted_96, [
-                  _hoisted_97,
-                  vue.withDirectives(vue.createElementVNode("select", {
-                    "onUpdate:modelValue": _cache[29] || (_cache[29] = ($event) => $data.settings.promptType = $event)
-                  }, _hoisted_100, 512), [
-                    [vue.vModelSelect, $data.settings.promptType]
-                  ]),
-                  vue.createElementVNode("small", null, [
-                    vue.createTextVNode(" 💡 "),
-                    _hoisted_101,
-                    vue.createTextVNode("：适合大多数验证码且大幅节省API费用"),
-                    _hoisted_102,
-                    vue.createTextVNode(" 📊 Token消耗对比：简洁版 ~50-80 tokens，详细版 ~800-1000 tokens"),
-                    _hoisted_103,
-                    vue.createElementVNode("details", _hoisted_104, [
-                      _hoisted_105,
-                      vue.createElementVNode("div", _hoisted_106, vue.toDisplayString($data.settings.promptType === "simple" ? $data.SIMPLE_PROMPT : $data.DEFAULT_PROMPT), 1)
-                    ])
-                  ])
-                ])
-              ])
-            ])) : vue.createCommentVNode("", true),
-            $data.activeSettingTab === "domain" ? (vue.openBlock(), vue.createElementBlock("div", _hoisted_107, [
-              vue.createElementVNode("div", _hoisted_108, [
-                _hoisted_109,
-                vue.createElementVNode("div", _hoisted_110, [
-                  vue.withDirectives(vue.createElementVNode("textarea", {
-                    "onUpdate:modelValue": _cache[30] || (_cache[30] = ($event) => $data.settings.disabledDomains = $event),
-                    placeholder: "每行一个域名，支持正则和通配符，例如：\nexample.com\n*.example.org\nexample.*.com\n/^(www\\.)?example\\.com$/",
-                    rows: "6",
-                    class: "domain-textarea"
-                  }, null, 512), [
-                    [vue.vModelText, $data.settings.disabledDomains]
-                  ]),
-                  _hoisted_111
-                ])
-              ])
-            ])) : vue.createCommentVNode("", true),
-            $data.activeSettingTab === "advanced" ? (vue.openBlock(), vue.createElementBlock("div", _hoisted_112, [
-              vue.createElementVNode("div", _hoisted_113, [
-                _hoisted_114,
-                _hoisted_115,
-                vue.createElementVNode("div", _hoisted_116, [
-                  _hoisted_117,
-                  vue.createElementVNode("div", _hoisted_118, [
-                    (vue.openBlock(true), vue.createElementBlock(vue.Fragment, null, vue.renderList($data.settings.customCaptchaSelectors, (selector, index) => {
-                      return vue.openBlock(), vue.createElementBlock("div", {
-                        key: "captcha-" + index,
-                        class: "selector-item"
-                      }, [
-                        vue.withDirectives(vue.createElementVNode("input", {
-                          type: "text",
-                          "onUpdate:modelValue": ($event) => $data.settings.customCaptchaSelectors[index] = $event,
-                          placeholder: "例如: img[src*='captcha']"
-                        }, null, 8, _hoisted_119), [
-                          [vue.vModelText, $data.settings.customCaptchaSelectors[index]]
-                        ]),
-                        vue.createElementVNode("button", {
-                          type: "button",
-                          class: "remove-selector",
-                          onClick: ($event) => $options.removeSelector("captcha", index)
-                        }, " × ", 8, _hoisted_120)
-                      ]);
-                    }), 128)),
-                    vue.createElementVNode("button", {
-                      type: "button",
-                      class: "add-selector",
-                      onClick: _cache[31] || (_cache[31] = ($event) => $options.addSelector("captcha"))
-                    }, " 添加选择器 ")
-                  ])
-                ]),
-                vue.createElementVNode("div", _hoisted_121, [
-                  _hoisted_122,
-                  vue.createElementVNode("div", _hoisted_123, [
-                    (vue.openBlock(true), vue.createElementBlock(vue.Fragment, null, vue.renderList($data.settings.customInputSelectors, (selector, index) => {
-                      return vue.openBlock(), vue.createElementBlock("div", {
-                        key: "input-" + index,
-                        class: "selector-item"
-                      }, [
-                        vue.withDirectives(vue.createElementVNode("input", {
-                          type: "text",
-                          "onUpdate:modelValue": ($event) => $data.settings.customInputSelectors[index] = $event,
-                          placeholder: "例如: input[name*='captcha']"
-                        }, null, 8, _hoisted_124), [
-                          [vue.vModelText, $data.settings.customInputSelectors[index]]
-                        ]),
-                        vue.createElementVNode("button", {
-                          type: "button",
-                          class: "remove-selector",
-                          onClick: ($event) => $options.removeSelector("input", index)
-                        }, " × ", 8, _hoisted_125)
-                      ]);
-                    }), 128)),
-                    vue.createElementVNode("button", {
-                      type: "button",
-                      class: "add-selector",
-                      onClick: _cache[32] || (_cache[32] = ($event) => $options.addSelector("input"))
-                    }, " 添加选择器 ")
-                  ])
-                ]),
-                vue.createElementVNode("div", _hoisted_126, [
-                  _hoisted_127,
-                  vue.createElementVNode("div", _hoisted_128, [
-                    vue.createElementVNode("div", _hoisted_129, [
-                      vue.withDirectives(vue.createElementVNode("input", {
-                        type: "text",
-                        "onUpdate:modelValue": _cache[33] || (_cache[33] = ($event) => $data.settings.rulesUrl = $event),
-                        placeholder: "https://raw.githubusercontent.com/anghunk/UserScript/main/CAPTCHA-automatic-recognition/rules.json"
-                      }, null, 512), [
-                        [vue.vModelText, $data.settings.rulesUrl]
-                      ]),
-                      _hoisted_130
-                    ]),
-                    vue.createElementVNode("button", {
-                      type: "button",
-                      class: vue.normalizeClass(["reload-rules-button", {
-                        "test-loading": $data.rulesLoadStatus === "loading",
-                        "test-success": $data.rulesLoadStatus === "success",
-                        "test-error": $data.rulesLoadStatus === "error"
-                      }]),
-                      onClick: _cache[34] || (_cache[34] = (...args) => $options.reloadRules && $options.reloadRules(...args))
-                    }, [
-                      $data.rulesLoadStatus === "" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_131, "重新加载规则")) : $data.rulesLoadStatus === "loading" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_132)) : $data.rulesLoadStatus === "success" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_133, "加载成功")) : $data.rulesLoadStatus === "error" ? (vue.openBlock(), vue.createElementBlock("span", _hoisted_134, "加载失败")) : vue.createCommentVNode("", true)
-                    ], 2),
-                    _hoisted_135
-                  ])
-                ])
-              ])
-            ])) : vue.createCommentVNode("", true)
-          ]),
-          vue.createElementVNode("div", _hoisted_136, [
-            vue.createElementVNode("button", {
-              onClick: _cache[35] || (_cache[35] = (...args) => $options.saveSettings && $options.saveSettings(...args))
-            }, "保存设置"),
-            vue.createElementVNode("button", {
-              onClick: _cache[36] || (_cache[36] = (...args) => $options.closeSettings && $options.closeSettings(...args))
-            }, "取消")
-          ])
-        ])
-      ], 2)) : vue.createCommentVNode("", true)
-    ]);
+            ])
+          ])) : vue.createCommentVNode("", true)
+        ]);
+      };
+    }
+  };
+  class DomainBlocklist {
+    /**
+     * @param {object} settings - 响应式设置对象(读取 disabledDomains)
+     */
+    constructor(settings) {
+      this.settings = settings;
+    }
+    /** 当前网站是否被禁用 */
+    isCurrentDomainBlocked() {
+      return this.isBlocked(window.location.hostname);
+    }
+    /** 指定域名是否被禁用 */
+    isBlocked(hostname) {
+      return this._patterns().some((pattern) => this._matches(pattern, hostname));
+    }
+    _patterns() {
+      return (this.settings.disabledDomains || "").split("\n").map((line) => line.trim()).filter((line) => line !== "");
+    }
+    _matches(pattern, hostname) {
+      if (isRegexLiteral(pattern)) {
+        return testRegexLiteral(pattern, hostname, "无效的正则表达式：");
+      }
+      if (pattern.includes("*")) {
+        return wildcardToRegExp(pattern).test(hostname);
+      }
+      return pattern === hostname;
+    }
   }
-  const App = /* @__PURE__ */ _export_sfc(_sfc_main, [["render", _sfc_render]]);
-  const app = vue.createApp(App);
-  app.mount(
-    (() => {
-      const appDiv = document.createElement("div");
-      document.documentElement.append(appDiv);
-      return appDiv;
-    })()
-  );
+  function createCoreServices() {
+    const storage = new StorageService();
+    const http = new HttpClient();
+    const settingsStore = new SettingsStore(storage);
+    const { settings } = settingsStore;
+    const toast = new ToastService(settings);
+    const rules = new RulesService({ storage, http, settings, toast });
+    const registry = new ProviderRegistry({ http, settings });
+    const tester = new ProviderConnectionTester({ registry, toast });
+    return { settingsStore, settings, toast, rules, registry, tester };
+  }
+  function createCaptchaServices({ settings, toast, rules, registry }) {
+    const panel = new PanelController();
+    const resolver = new SelectorResolver({ settings, rulesService: rules });
+    const finder = new CaptchaFinder({ resolver, inputFinder: new InputFieldFinder(resolver) });
+    const icons = new RecognitionIconManager();
+    const converter = new ImageConverter();
+    const blocklist = new DomainBlocklist(settings);
+    const cleaner = new CaptchaTextCleaner();
+    const recognizer = new CaptchaRecognizer({ registry, cleaner, toast, panel });
+    const processor = new CaptchaProcessor({
+      settings,
+      blocklist,
+      converter,
+      recognizer,
+      finder,
+      icons,
+      toast,
+      optimizer: new CanvasOptimizer(),
+      clipboard: new ClipboardService()
+    });
+    const watcher = new CaptchaWatcher({
+      settings,
+      blocklist,
+      resolver,
+      finder,
+      icons,
+      converter,
+      processor,
+      toast
+    });
+    return { panel, watcher };
+  }
+  function createServices() {
+    const core = createCoreServices();
+    return { ...core, ...createCaptchaServices(core) };
+  }
+  function mountSettingsUI(services) {
+    const app = vue.createApp(_sfc_main);
+    app.provide(SERVICES_KEY, services);
+    const container = document.createElement("div");
+    document.documentElement.append(container);
+    app.mount(container);
+  }
+  function registerSettingsMenu(panel) {
+    if (typeof GM_registerMenuCommand !== "undefined") {
+      GM_registerMenuCommand("验证码识别设置", () => panel.open());
+    }
+  }
+  function launch({ settingsStore, rules, panel, watcher }) {
+    settingsStore.load();
+    rules.loadCachedOrFetch();
+    registerSettingsMenu(panel);
+    rules.fetchDailyIfNeeded();
+    watcher.start();
+  }
+  function startApp() {
+    applySiteCompat();
+    const services = createServices();
+    mountSettingsUI(services);
+    try {
+      launch(services);
+    } catch (error) {
+      console.error("验证码识别插件挂载失败：", error);
+    }
+  }
+  startApp();
 
 })(Vue);
